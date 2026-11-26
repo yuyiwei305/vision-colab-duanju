@@ -184,7 +184,7 @@
     "skills/short-drama-review/references/review-method.md": "b0c873726186d3d73d344e72abe506df8fb65bcc02166b501721a404a09f582a",
     "skills/short-drama-review/references/rubric-assets-prompts.md": "85dc1d5878f6309a2c8dc514c0a791e49dc66ce66bbbd424e0045d77a0390f9c",
     "skills/short-drama-review/references/rubric-source-analysis.md": "435cbd782638c99170ad215313bfc0180b8922b331e3842254e8a6f0cb274700",
-    "skills/short-drama-review/references/rubric-story-script.md": "d6243b069209e37a20173145a98798950e98717ce391c83591d1d1bb24a6b36c",
+    "skills/short-drama-review/references/rubric-story-script.md": "b24c6e04002fb0d20d437d6930026bdfe0ef9a0f0e102a1554d5823ae1e758db",
     "skills/short-drama-review/references/rubric-visual-motion.md": "a0a696e42217ccfb0d929a769814cec34cf9533856a3215e3b21ad9f8388f56e",
     "skills/short-drama-review/references/stage-contract.md": "629907e26dd0100220f35776a9a356913282ce24c913d1ff3e35a275a847cf63",
     "skills/short-drama-storyboard/SKILL.md": "30c75e614564f22846767820824a1a6f0c94a4a5e11ae9008ddae1e1ba590d5d",
@@ -199,7 +199,7 @@
     "skills/short-drama-storyboard/references/review-and-fixtures.md": "3fc1ab6685efcc6a5241fe4e7494e95f0117f0cf074ab61671260ff3e9495091",
     "skills/short-drama-storyboard/references/scene-visual-plan.md": "590d721ab5497f5ef6f416a55c035234761e0f25c2349bbba8b8eed16de4c4ff",
     "skills/short-drama-storyboard/references/screenplay-to-keyframe-example.md": "ddb69a7f3b25affc420176f5fd1390f10a80f4b1115789d31b9c425b5f21367b",
-    "skills/short-drama-storyboard/references/shot-craft.md": "e865996a1b154e82a86c5c643789ca3c3f9a1d9d043a1444866f0b07f3011326",
+    "skills/short-drama-storyboard/references/shot-craft.md": "690fcf29f7dac4e7ae0f28b22c3eb30a526f8eb107e74e9a577277df7afa66c2",
     "skills/short-drama-storyboard/references/shot-revision-identity.md": "4abae06eeeb6241af62fd5105bb4607275b00b49a416b1e0bee44174929d7847",
     "skills/short-drama-storyboard/references/stage-contract.md": "10a272b9126d465295a50b101e45403ced9fb6f34c2edd11a8aaa9b94ec3af38",
     "skills/short-drama-video-prompts/SKILL.md": "c3404e80fcd175a248f54ae2c4198c9377f54f14d1c4d809ebeb167ce34f8839",
@@ -217,15 +217,15 @@
     "skills/short-drama-video-prompts/references/stage-contract.md": "bf817eb32f9a93ea8bfd4acfe2c1e1fa621e1746218df37c897bc47d634bb736",
     "skills/short-drama-video-prompts/references/target-model-profile.md": "1a2798bf61765cbcb8922f2f53e493df80d7e63aa4428ba2dc70acc12a2f8b2e",
     "skills/short-drama-video-prompts/references/wan-3.0.md": "f70337a8d89295f57bed7b915049eb43dbb7a80fd84a114ac23f320bf43d856d",
-    "skills/short-drama-write/SKILL.md": "0fd38bda7a2bec6b0ce253e5a68093e04135ba8d3c3776f7ed6309f592fb072a",
+    "skills/short-drama-write/SKILL.md": "c733f78741b6bce8f600a45a29069cf878059fb5c21fe6d103ee14fa0cc6094b",
     "skills/short-drama-write/agents/openai.yaml": "94bca759fcef3aecd51d004ed041f56f36f1bb1513e5c34e08efdce9f9041bcd",
     "skills/short-drama-write/assets/screenplay.md": "4a683c244b7a5fada1ff3a1dd0abeb2740071642d3c3a901bf70b47c1a706d35",
-    "skills/short-drama-write/references/dialogue-craft.md": "1d057e2d15368a9415fc00c7d77bef9302cc7dd3a24bb489096f6342f62e2d29",
+    "skills/short-drama-write/references/dialogue-craft.md": "9c84ea44f281ebf1fb218deba49277847478ef059d141e44d8cafc059aeff8df",
     "skills/short-drama-write/references/production-format-dialect.md": "edc35e318cba24ffc5130969879f456e40413df3cdfa217ce329eb73a4599b30",
     "skills/short-drama-write/references/scene-handoff-capsule.md": "3c4cb72f7781b880d2dec3d6142c2295a50ace6502ace4efeb82981ad0d909ab",
     "skills/short-drama-write/references/scene-sound-dramaturgy.md": "fcdd0566fafebb66f16f339292c8296452c8da35c656d0129580984fc5835c35",
     "skills/short-drama-write/references/screenplay-format.md": "5bb985afdb393f460329c60663c868cef0b6cdb78f98830d1911525a9a1df176",
-    "skills/short-drama-write/references/script-craft.md": "ee48f420bad681815dc4a7d09a3090e02c80044f4ffacbbc5fe08a955e2241ed",
+    "skills/short-drama-write/references/script-craft.md": "65158f7a9bbdea2445340757e816084cb2ab5c2582bba81a29042ad90e4196e4",
     "skills/short-drama-write/references/stage-contract.md": "3df26cfbcab8452f0a2b6035c50d3efef67355c768f3e2aed651e307d3df99dc",
     "skills/short-drama-write/references/substitutable-realization.md": "b0fa7a879e5f3c28d7ac3ea32d67185e17f4f61bb18561aff7c8cefd437704eb",
     "skills/short-drama-write/scripts/duration_estimate.py": "cb272a56e2123b09517ea4c3987d6591a9b322b426b2134d5c6a3480f2468fb4",
@@ -312,6 +312,18 @@
         "authorization": "用户要求拆解 FreeVideo 分镜工作流并加强项目 SOP",
         "files": [
           "skills/short-drama-storyboard/SKILL.md"
+        ]
+      },
+      {
+        "date": "2026-11-26",
+        "scope": "引入首次观看读稿、关键对白听者反应和按风险预演，沿用现有剧本及分镜",
+        "authorization": "用户授权对比漫剧老李并优化现有剧本与分镜链路",
+        "files": [
+          "skills/short-drama-write/SKILL.md",
+          "skills/short-drama-write/references/dialogue-craft.md",
+          "skills/short-drama-write/references/script-craft.md",
+          "skills/short-drama-review/references/rubric-story-script.md",
+          "skills/short-drama-storyboard/references/shot-craft.md"
         ]
       }
     ]

@@ -29,7 +29,7 @@ license: MIT
 1. 锁定本集承诺的观看体验、进入状态、谁现在要什么、核心阻力、当集兑现和退出状态。
 2. 按首次观看顺序通读相邻场。写出上一场留下什么、本场由什么触发、谁因此做了什么、后果怎样引出下一场。关键跳时、物件回收和结果兑现直接写入剧本，按需查[场次交接与收束](references/script-craft.md#73-写清退出状态)。
 3. 把动作、对白、画外音、声音事实和画面文字写入同一份 `剧本.md`。用户要求整集就写完整集，场景批次自动续跑。
-4. 交稿前只读剧本通读自查，按下方写作要求与[经济性遍](references/script-craft.md#81-经济性遍)清理冗余。
+4. 交稿前做一次[首次观看读稿](references/script-craft.md#74-首次观看读稿)，定位观众取不到的因果与信息，再按[经济性遍](references/script-craft.md#81-经济性遍)压稿。遇到关键对白的关系变化，按[称呼与口语读稿](references/dialogue-craft.md#62-称呼与口语读稿)核对说法和表演。
 
 ## 写作要求
 
@@ -55,7 +55,7 @@ license: MIT
 - 项目特有的制作稿方言：[制作格式方言](references/production-format-dialect.md)
 - 输入含[核心选择](references/script-craft.md#33-把一拍写成艰难选择时两个方向都要活着)、[有限次数/轮次/呼吸/节拍](references/script-craft.md#63-有限单位按完成状态计数)、[精确倒计时](references/script-craft.md#62-倒计时先算动作不要只写数字)或[会改变人物判断的关键物证](references/script-craft.md#52-证据先改变判断再改变关系)：[剧作手艺](references/script-craft.md)
 - 过去关系需借对白进入，或区分人物腔调与潜台词：[对白手艺](references/dialogue-craft.md)
-- 台词使用非中文或跨语种改写：[非中文台词](references/dialogue-craft.md#62-非中文台词从场景直接写不逐句翻译)
+- 台词使用非中文或跨语种改写：[非中文台词](references/dialogue-craft.md#63-非中文台词从场景直接写不逐句翻译)
 - 声源、留白与 sound bridge：[场景声音戏剧](references/scene-sound-dramaturgy.md)
 - 创作者标注需要备选拍法以保住戏剧功能：[可替换拍法](references/substitutable-realization.md)
 - 长单集跨上下文续写的最小交接：[场景交接摘要](references/scene-handoff-capsule.md)
