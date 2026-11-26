@@ -1,0 +1,244 @@
+{
+  "schema_version": 1,
+  "profile": "h3-v4-g4-fullframe-v1",
+  "status": "offline_ready_current_task_gpu_validation_pending",
+  "source_workflow_sha256": "4f00162b29bd95a945b156991e0664fcc930e205cbbcc72bcbbed4d2947349ea",
+  "comfy_commit": "fca60fe70e5b84c5c6b058263653d15cb3401e44",
+  "python_target": "3.13",
+  "torch_version": "2.10.0+cu130",
+  "minimum_free_disk_gib": 150,
+  "constraints": {
+    "path": "docs/h3/pika-ref-v1-constraints.txt",
+    "sha256": "f0e54a621ea049f587ab8948e9b6a37266aea10c54277ffeff80b5d53e94b290"
+  },
+  "required_nodes": [
+    "UNETLoader",
+    "CLIPLoader",
+    "VAELoader",
+    "MiniMaxH3EasyModelAdapter",
+    "MiniMaxH3Easy",
+    "MiniMaxH3EasyOutput",
+    "MiniMaxH3EasyMediaBridge",
+    "LoraLoaderModelOnly",
+    "ModelAttentionBackend",
+    "BlockSparseAttention",
+    "BasicScheduler",
+    "H3SigmaRefiner",
+    "KSamplerSelect",
+    "ConditioningZeroOut",
+    "SelfLiftAvatarH3Sampler",
+    "LTXVSeparateAVLatent",
+    "VAEDecode",
+    "VAEDecodeAudio",
+    "LoadImage",
+    "LoadAudio",
+    "VHS_VideoCombine",
+    "H3V4Measure",
+    "H3V4Finalize",
+    "MiniMaxH3MotionContext",
+    "MiniMaxH3MotionContextTrim",
+    "MiniMaxH3MotionContextSaveLatent",
+    "MiniMaxH3MotionContextLoadLatent",
+    "H3V4Sigmas"
+  ],
+  "models": [
+    {
+      "bytes": 20970382008,
+      "sha256": "85a4573a861810bfb250b3cc38f492870b6a3b01048feaa02a85bc7c511b7ca1",
+      "url": "https://huggingface.co/Winnougan/Cobijada_Minimax-H3_Hybrid_Pruned_ComfyUI/resolve/d14d58723efadf84de98bc2c3a3613cfedea4d04/Cobijada_H3_Hybrid_Uncensored_pruned_hybrid_int8_convrot_pruned.safetensors",
+      "path": "diffusion_models/Cobijada_H3_Hybrid_Uncensored_pruned_hybrid_int8_convrot_pruned.safetensors"
+    },
+    {
+      "bytes": 27141342152,
+      "sha256": "bc2ced0fbea64757fa9acddccfc0b3f4819d1dcf1da6c124d690d368be283923",
+      "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/54472221d27c695fca9621b0c3ed52f06c4af707/text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+      "path": "text_encoders/qwen3vl_32b_minimax_h3_int8_convrot.safetensors"
+    },
+    {
+      "bytes": 2811065184,
+      "sha256": "52a2c8c73583c86e4f41cdcce3a6ad0ea562987bc0bf3d60a0cef5f5c8e60c0e",
+      "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/54472221d27c695fca9621b0c3ed52f06c4af707/vae/minimax_h3_video_vae_int8_convrot.safetensors",
+      "path": "vae/minimax_h3_video_vae_int8_convrot.safetensors"
+    },
+    {
+      "bytes": 605254808,
+      "sha256": "8e505d95dd1561d47abd43d4238fd40d9bb1ae9e147ed0a4cba778d76ae4db48",
+      "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/54472221d27c695fca9621b0c3ed52f06c4af707/vae/minimax_h3_audio_vae_fp32.safetensors",
+      "path": "vae/minimax_h3_audio_vae_fp32.safetensors"
+    },
+    {
+      "bytes": 1956171984,
+      "sha256": "fc9b6500f0331fe925b004738baaa31bd34104741c8bf9334816f9ac3005c8c1",
+      "url": "https://huggingface.co/Kijai/MiniMax-H3_comfy/resolve/587e806edadec7b92393556b3ac3115cadfb32be/loras/minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy.safetensors",
+      "path": "loras/minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy.safetensors"
+    },
+    {
+      "bytes": 131229656,
+      "sha256": "acc529601d2da117fb81179e76c56e488a3beab1171659d305f04fa3655b787e",
+      "url": "https://huggingface.co/fal/MiniMax-H3-Realism-People-LoRA/resolve/039cc8579d7aa357a882d7f4111b25da4f72dccc/h3-realism-people-t2v-i2v-r2v.safetensors",
+      "path": "loras/h3-realism-people-t2v-i2v-r2v.safetensors"
+    },
+    {
+      "bytes": 309965208,
+      "sha256": "51dda79218ea126cbb2e08f3a6d9cc595e2224f4977d7618061954043a8bafcf",
+      "url": "https://huggingface.co/orangesouth/MinimaxH3CinematicRealism/resolve/05c48f1640b06b839ef102ee8640ad7e1fcdcdc2/Minimax%20H3%E7%9C%9F%E5%AE%9E%E7%94%B5%E5%BD%B1%E8%B4%A8%E6%84%9FV0.1.safetensors",
+      "path": "loras/Minimax H3真实电影质感V0.1.safetensors"
+    },
+    {
+      "bytes": 155110280,
+      "sha256": "5b3edb09e9d6029439badf9bc9db4ba4a355ae679b0810888de82c4793c0bac8",
+      "url": "https://huggingface.co/JOKER141/MiniMax-H3-Combat-Base-V2/resolve/7b3c5b7157d66517f5bd8f5d3fa8fd2c66bc4d11/H3_Combat_V2.safetensors",
+      "path": "loras/H3_Combat_V2.safetensors"
+    },
+    {
+      "bytes": 10093356,
+      "sha256": "593b074e8eb17bf9f858c3586fc12f53038dbfdd9634e146fe34a17e2661ca40",
+      "url": "https://huggingface.co/RunningHubAI/rh-h3-speed-slider-1.1-lora/resolve/e1af402c4483fbf3c03894364a2403cbe316a584/H3_speed_slider_1.1.safetensors",
+      "path": "loras/H3_speed_slider_1.1.safetensors"
+    },
+    {
+      "bytes": 74570616,
+      "sha256": "7b7ca90a9ce93be810876e13a62717180d15db7c2339699d6ea80a992b52a5e1",
+      "url": "https://huggingface.co/RunningHubAI/rh-framerush-v2-lora/resolve/6aaafbaccee564ac3e2ac7034b50d9eaf4b20d33/FrameRush-Minimax-V2_c2-st1500.safetensors",
+      "path": "loras/FrameRush-Minimax-V2_c2-st1500.safetensors"
+    },
+    {
+      "bytes": 690592672,
+      "sha256": "043e5a48e161610ef6c3ea974645220354d06fa618abca15f76d084812eb55c2",
+      "url": "https://huggingface.co/KENIC-1/minimax_h3_latent_upscaler_3d_fp16_V2/resolve/3c71c6105256c97a7cd8bcd8358dd3b69e71121f/minimax_h3_latent_upscaler_3d_fp16_V2.safetensors",
+      "path": "latent_upscale_models/minimax_h3_latent_upscaler_3d_fp16_V2.safetensors"
+    }
+  ],
+  "custom_archives": [
+    {
+      "name": "selflift-Avatar",
+      "url": "https://codeload.github.com/slmonker/selflift-Avatar/zip/460f88629b35f792a2ca68b219f13c1ba46e2ee3",
+      "sha256": "c8b65700f7d66ce11fbcbef338bab4e7bb2ba684deb0cfd62c33112129f89de0",
+      "directory": "selflift-Avatar-460f88629b35f792a2ca68b219f13c1ba46e2ee3",
+      "repository": "slmonker/selflift-Avatar",
+      "revision": "460f88629b35f792a2ca68b219f13c1ba46e2ee3",
+      "patches": [
+        {
+          "path": "h3_upscaler.py",
+          "before_sha256": "a51d82114601b9a5cd0952c9ddeb17cda017fca0bad673972e03fbd3b7c34ccb",
+          "after_sha256": "d802572115e940c9cbf2c8c2e71174b0b22aaf369de6beb86e60ee44e1bc00e3",
+          "reason": "User explicitly disables intentional VRAM saving, including hidden temporal chunking; reserve full temporal workspace.",
+          "replacements": [
+            {
+              "before": "temporal_window = model.temporal_window_budget(T)",
+              "after": "temporal_window = T"
+            },
+            {
+              "before": "chunked = not identity and length > chunk",
+              "after": "chunked = False"
+            },
+            {
+              "before": "budget_window = model.temporal_window_budget(length)",
+              "after": "budget_window = length"
+            },
+            {
+              "before": "out = model(x, scale=scale, target_size=(z0_low.shape[2], H, W))",
+              "after": "out = model(x, scale=scale, target_size=(z0_low.shape[2], H, W), enable_chunking=False)"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ComfyUI-MiniMaxH3-Easy",
+      "url": "https://codeload.github.com/nkxx188/ComfyUI-MiniMaxH3-Easy/zip/4b496eedeff944b2f1266c8c92df1b6c89758de0",
+      "sha256": "8491e1885f34a586968db5cceb55c600e2e6d91a50b66d461e0c06875a115493",
+      "directory": "ComfyUI-MiniMaxH3-Easy-4b496eedeff944b2f1266c8c92df1b6c89758de0",
+      "repository": "nkxx188/ComfyUI-MiniMaxH3-Easy",
+      "revision": "4b496eedeff944b2f1266c8c92df1b6c89758de0"
+    },
+    {
+      "name": "ComfyUI-YCNodes-MiniMax-H3",
+      "url": "https://codeload.github.com/yichengup/ComfyUI-YCNodes-MiniMax-H3/zip/ca9447bd21048f37539f9f15250831fcfdf481c7",
+      "sha256": "d8efd7c5518cb1f9454899dd25a34607a27647caf0e9eb6207576a1cf2a14b79",
+      "directory": "ComfyUI-YCNodes-MiniMax-H3-ca9447bd21048f37539f9f15250831fcfdf481c7",
+      "repository": "yichengup/ComfyUI-YCNodes-MiniMax-H3",
+      "revision": "ca9447bd21048f37539f9f15250831fcfdf481c7"
+    },
+    {
+      "name": "ComfyUI-H3-Motion-Context",
+      "url": "https://codeload.github.com/NikoDemon80/ComfyUI-H3-Motion-Context/zip/725a731e644c669601799da1eb63f4e7497c628f",
+      "sha256": "df79253cf3a48f7d02965d6f9364dba572cca1cdbe97afe7382b962c2863d5b2",
+      "directory": "ComfyUI-H3-Motion-Context-725a731e644c669601799da1eb63f4e7497c628f",
+      "repository": "NikoDemon80/ComfyUI-H3-Motion-Context",
+      "revision": "725a731e644c669601799da1eb63f4e7497c628f"
+    },
+    {
+      "name": "ComfyUI-VideoHelperSuite",
+      "url": "https://codeload.github.com/Kosinkadink/ComfyUI-VideoHelperSuite/zip/4d907bee61e92c2e65af3bd6383a4e4d356126d1",
+      "sha256": "5114977eefb133c76592a5213c45ad3caa1ad7b1c2e4a77905b5ff0c48ca4363",
+      "directory": "ComfyUI-VideoHelperSuite-4d907bee61e92c2e65af3bd6383a4e4d356126d1",
+      "repository": "Kosinkadink/ComfyUI-VideoHelperSuite",
+      "revision": "4d907bee61e92c2e65af3bd6383a4e4d356126d1"
+    }
+  ],
+  "measurement_nodes": {
+    "path": "scripts/h3_v4_nodes.py",
+    "sha256": "62bdb018c6778b612256fcbd08402bdb8bdd75dfb42a45629753bdaea4ccc2f7",
+    "preflight_route": "/h3/v4-preflight"
+  },
+  "extra_dependencies": [
+    "requests",
+    "psutil",
+    "imageio-ffmpeg",
+    "opencv-python"
+  ],
+  "capabilities": {
+    "reference_image_count": {
+      "min": 1,
+      "max": 9
+    },
+    "max_reference_audio_count": 3,
+    "max_total_references": 12,
+    "reference_audio": true,
+    "duration_seconds": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "latent_continuation": true,
+    "native_canvases": [
+      [
+        1344,
+        768
+      ],
+      [
+        768,
+        1344
+      ]
+    ],
+    "scene_profiles": [
+      "drama",
+      "action"
+    ],
+    "gpu_validated": false,
+    "continuation_presets": [
+      "5v24a",
+      "22v18a"
+    ],
+    "native_dialogue_excerpt_dependencies": true
+  },
+  "memory_policy": {
+    "highres_tiling": false,
+    "temporal_chunking": false,
+    "ffn_chunk_patch": false,
+    "low_vram_attention_patch": false,
+    "automatic_memory_saving_fallback": false,
+    "retain_core_sparse_attention_implementation": true
+  },
+  "foundation_lock": "docs/h3/workflow-v4-foundation.lock.json"
+}

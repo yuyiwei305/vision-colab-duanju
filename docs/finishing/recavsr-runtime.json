@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "profile": "recavsr-whole-film-v1",
+  "comfy_commit": "989d93d0d968e704c589ce0146bb18c77f6b50cc",
+  "recavsr_commit": "831769467c89b35ee47926189ac8189be63883d1",
+  "rife_commit": "bbfd2ea90910789a860ea3e2b32a240cd577b75e",
+  "rife_zip_sha256": "e63d481b7ae5d4a4e6ad7ac5b410ff78f3bf7be3b51b2e38ca8152747abde5b4",
+  "color_fix": "none",
+  "weights": [
+    {
+      "file": "transformer_int8_convrot.safetensors",
+      "path": "recavsr/transformer_int8_convrot.safetensors",
+      "repository": "PedroMarinhoDev/ReCaVSR-ComfyUI",
+      "revision": "2fffebd4413433ad4b8be7aec44b7fb60c897d6a",
+      "sha256": "70f77ac653a29dcab8cb8d5f5300acf27d9a3a45e9baf273fa4526fa43f66c9d"
+    },
+    {
+      "file": "flashdecoder.safetensors",
+      "path": "flashdecoder.safetensors",
+      "repository": "kopper/ReCaVSR",
+      "revision": "9c874580eedeea516f31ee1f7c562a311dbf9cf7",
+      "sha256": "f4feb3e7b0b65f98e15bb709a1ba28dfaada7c06bf7fc0ce4cdbcb58803034e8"
+    },
+    {
+      "file": "prompt.safetensors",
+      "path": "prompt.safetensors",
+      "repository": "kopper/ReCaVSR",
+      "revision": "9c874580eedeea516f31ee1f7c562a311dbf9cf7",
+      "sha256": "325ee3b5ec7d8bd43bc7ab186be5272dec0877c04e7c01a46fd0893260c9c6a5"
+    }
+  ]
+}

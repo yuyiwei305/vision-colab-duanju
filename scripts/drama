@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euo pipefail
+PROJECT_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+SUITE="$PROJECT_ROOT/ref/drama-skills/skills"
+DEFAULT_ADAPTER_CONFIG="$HOME/.config/vision-media/drama-adapters.json"
+# A worktree may bind its own project-external config without changing the
+# primary checkout's model or embedding machine paths in tracked source.
+if [[ -f "$PROJECT_ROOT/.short-drama/adapter-config-path" ]]; then
+  IFS= read -r DEFAULT_ADAPTER_CONFIG < "$PROJECT_ROOT/.short-drama/adapter-config-path"
+fi
+ADAPTER_CONFIG="${DRAMA_ADAPTER_CONFIG:-$DEFAULT_ADAPTER_CONFIG}"
+export PYTHONDONTWRITEBYTECODE=1
+COMMAND="${1:-help}"
+[[ $# -eq 0 ]] || shift
+case "$COMMAND" in
+  skills|episode|task|document|asset|timeline|finish|release)
+    exec python3 "$PROJECT_ROOT/scripts/drama-factory.py" "$COMMAND" "$@"
+    ;;
+  status)
+    exec python3 "$SUITE/short-drama/scripts/project_tool.py" status "${1:-$PROJECT_ROOT}" "${@:2}"
+    ;;
+  project)
+    exec python3 "$PROJECT_ROOT/scripts/drama-project.py" "$@"
+    ;;
+  check)
+    exec python3 "$SUITE/short-drama/scripts/creator_markdown_check.py" "$@"
+    ;;
+  produce)
+    case "${1:-}" in
+      run|collect)
+        exec python3 "$PROJECT_ROOT/scripts/drama-group-production.py" "$@" --adapter-config "$ADAPTER_CONFIG"
+        ;;
+      *) exec python3 "$PROJECT_ROOT/scripts/drama-group-production.py" "$@" ;;
+    esac
+    ;;
+  edit)
+    exec python3 "$PROJECT_ROOT/scripts/drama-edit-safe.py" "$@"
+    ;;
+  h3-episode)
+    case "${1:-}" in
+      prepare|register|run|resume|preflight|release)
+        exec python3 "$PROJECT_ROOT/scripts/h3_production.py" "$@"
+        ;;
+      *) echo "使用 drama h3-episode <prepare|preflight|register|run|resume|release> ..." >&2; exit 2 ;;
+    esac
+    ;;
+  dashboard)
+    exec python3 "$SUITE/short-drama/scripts/dashboard_server.py" --workspace "$PROJECT_ROOT" "$@"
+    ;;
+  help|--help|-h)
+    cat <<'USAGE'
+Vision Media · Drama Skills
+  drama skills --step 6 或 --check       读取阶段技能正文或核对全部 18 步
+  drama episode plan|spec|work|status <作品> --episode EP001   单集规格、阶段工单与统一计划
+  drama task create|prepare|run|resume|reconcile <作品> ...   共用任务、总预算与恢复
+  drama task upgrade-execution <作品> ...                   按授权迁移既有任务的执行版本
+  drama document inspect|revise|recover <作品> ...           正式文档修订与恢复
+  drama asset call|register|observe|select <作品> ...        工具回执、实图观察与回绑
+  drama timeline prepare|readback|diff|actions|verify ...    剪辑单交换、编辑器回读与核验
+  drama finish prepare|run|resume|status ...                ReCaVSR 全片增强，默认短边 2160、RIFE 60fps
+  drama status [作品目录]              查看指定作品；省略时查看根目录旧作品
+  drama project <命令> ...             官方项目工具
+  drama check <剧集目录> [--partial]    核对当前创作文档
+  drama produce <命令> ...              预览、快照登记、生产、恢复和对账
+  drama edit <命令> ...                 剪辑、渲染和验证
+  drama h3-episode <命令> ...           H3 V4 专项检查、批次与旧任务恢复
+  drama dashboard --detach --port 0     启动本地创作台
+  drama dashboard --status|--stop       查询或关闭创作台
+
+相对路径按调用时的工作目录解释。任务内生产遵循 prepare → Agent依据任务授权confirm → run。
+默认连续执行，仅在用户指定的确认点暂停；详见 docs/autonomous-execution-sop.md。
+USAGE
+    ;;
+  *) echo "未知命令：$COMMAND；使用 drama --help。" >&2; exit 2 ;;
+esac

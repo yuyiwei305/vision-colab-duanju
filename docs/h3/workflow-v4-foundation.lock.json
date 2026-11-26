@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "foundation": "h3-v4-g4-fullframe-v1",
+  "status": "offline_checks_pending_current_task_gpu_validation_pending",
+  "authority": "Historical H3 V4 foundation; current task authorization and runtime identity are recorded by the factory.",
+  "source_workflow_sha256": "4f00162b29bd95a945b156991e0664fcc930e205cbbcc72bcbbed4d2947349ea",
+  "files_sha256": {
+    "scripts/colab_h3.py": "18a64abc9e1a2c8a0f4aa660e293ebe50ebc61119a05d32f0dab25323916d5e3",
+    "scripts/colab_h3_remote.py": "1ca2402a46743addeb7f83634474b234ed2ebe36069f4d2ed9cce5d907a5b521",
+    "scripts/h3_episode.py": "cf2712eab95e0e6d80ea222a8d90384798ebff6045ba39ecbcc6e00f3f396747",
+    "scripts/h3_workflow_v4.py": "fbf83f3f5a5235ce80d87cce570ccb4cc389af06c95348c1123e9958f42f35ad",
+    "scripts/h3_v4_nodes.py": "62bdb018c6778b612256fcbd08402bdb8bdd75dfb42a45629753bdaea4ccc2f7",
+    "scripts/h3_pika_nodes.py": "89eeebf1316369399b1533f5cd24457ea4e4ad46af8f171193b08198bf1887cc",
+    "scripts/h3_media_retention.py": "fb71d231445d837890145af2a91da1e195721c49a9106d38b6c755704efce547",
+    "scripts/drama-group-production.py": "e8aa6a1f3ad709f4b91a716480320d071b55ed98c0238ea4fde03f6e27ea963f",
+    "scripts/drama": "9f75e7f3cda77220fbf5dd6d3dcc7b190a12643cab19a4d2b4683f9ea14964c7",
+    "ref/drama-skills/skills/short-drama-produce/scripts/production_tool.py": "1f9e8e1e4f460a68736bb142280563df8ccaa06d1d97bac6be5e9f83aa27e3d6",
+    "docs/h3/pika-ref-v1-constraints.txt": "f0e54a621ea049f587ab8948e9b6a37266aea10c54277ffeff80b5d53e94b290",
+    "docs/h3/workflow-v4-g4-runtime.json": "b40dd5bc06dcbcc1ecc5368ba0781424d905b7ef43d583e553be792e642a1126",
+    "scripts/h3_native_voice.py": "dc20f06aa85942504aa73c4e5430e80a035f80bcc3095b00896efad95a484ad0"
+  },
+  "default_production_profile_unchanged": true,
+  "gpu_validation": false
+}

@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "profile": "pika-ref-episode-v2",
+  "status": "candidate_pending_ep004_validation",
+  "comfy_commit": "fca60fe70e5b84c5c6b058263653d15cb3401e44",
+  "python_target": "3.13",
+  "torch_version": "2.10.0+cu130",
+  "required_nodes": [
+    "UNETLoader",
+    "CLIPLoader",
+    "VAELoader",
+    "MiniMaxH3SigmaShift",
+    "MiniMaxH3ReferenceToVideo",
+    "RandomNoise",
+    "KSamplerSelect",
+    "BasicGuider",
+    "SamplerCustomAdvanced",
+    "LTXVSeparateAVLatent",
+    "VAEDecode",
+    "VAEDecodeAudio",
+    "CreateVideo",
+    "SaveVideo",
+    "LoadImage",
+    "LoraLoaderModelOnly",
+    "ManualSigmas",
+    "H3PikaAttention",
+    "H3PikaFinalize",
+    "LoadAudio",
+    "MiniMaxH3MotionContext",
+    "MiniMaxH3MotionContextTrim",
+    "MiniMaxH3MotionContextSaveLatent",
+    "MiniMaxH3MotionContextLoadLatent"
+  ],
+  "models": [
+    {
+      "path": "diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors",
+      "bytes": 20970379616,
+      "sha256": "9255f52b6677845ad238f20dfaafa94727053694127ab7f255c048f0f9365779",
+      "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/54472221d27c695fca9621b0c3ed52f06c4af707/diffusion_models/minimax_h3_ref2va_pruned_int8_convrot.safetensors"
+    },
+    {
+      "path": "loras/pika_h3_flex_ref2va_v1_bf16.safetensors",
+      "bytes": 1956172304,
+      "sha256": "de3745ceb7d8d5c20898dd8fa3a05f1c0b00089ccd55297b2a8bab95c766b0e0",
+      "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/54472221d27c695fca9621b0c3ed52f06c4af707/loras/pika_h3_flex_ref2va_v1_bf16.safetensors"
+    },
+    {
+      "path": "text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "bytes": 15687142551,
+      "sha256": "35a88d51044231fe332301d7a62aa81e3f2cba62febeb446e2c1e3e0ef76f2c6",
+      "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/54472221d27c695fca9621b0c3ed52f06c4af707/text_encoders/qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors"
+    },
+    {
+      "path": "vae/minimax_h3_video_vae_int8_convrot.safetensors",
+      "bytes": 2811065184,
+      "sha256": "52a2c8c73583c86e4f41cdcce3a6ad0ea562987bc0bf3d60a0cef5f5c8e60c0e",
+      "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/54472221d27c695fca9621b0c3ed52f06c4af707/vae/minimax_h3_video_vae_int8_convrot.safetensors"
+    },
+    {
+      "path": "vae/minimax_h3_audio_vae_fp32.safetensors",
+      "bytes": 605254808,
+      "sha256": "8e505d95dd1561d47abd43d4238fd40d9bb1ae9e147ed0a4cba778d76ae4db48",
+      "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/54472221d27c695fca9621b0c3ed52f06c4af707/vae/minimax_h3_audio_vae_fp32.safetensors"
+    }
+  ],
+  "weights_revision": "54472221d27c695fca9621b0c3ed52f06c4af707",
+  "constraints": {
+    "path": "docs/h3/pika-ref-v1-constraints.txt",
+    "sha256": "f0e54a621ea049f587ab8948e9b6a37266aea10c54277ffeff80b5d53e94b290"
+  },
+  "custom_nodes_sha256": "89eeebf1316369399b1533f5cd24457ea4e4ad46af8f171193b08198bf1887cc",
+  "sage3_wheel": {
+    "name": "sageattn3-1.0.0+cu130torch2.10-cp313-cp313-manylinux_2_34_x86_64.manylinux_2_35_x86_64.whl",
+    "url": "https://github.com/Comfy-Org/wheels/releases/download/sageattn3-latest/sageattn3-1.0.0%2Bcu130torch2.10-cp313-cp313-manylinux_2_34_x86_64.manylinux_2_35_x86_64.whl",
+    "sha256": "3d74100ffe3f068c5c223f5f247db7d56a7dc85dd0f984218c3dff55091010e9",
+    "bytes": 2971384
+  },
+  "capabilities": {
+    "mode": "ref2va",
+    "reference_image_count": {
+      "min": 1,
+      "max": 4
+    },
+    "reference_audio": true,
+    "reference_video": false,
+    "duration_seconds": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15
+    ],
+    "attention_backends": [
+      "pytorch",
+      "comfy_kitchen_int8",
+      "sage3"
+    ],
+    "max_cases": 32,
+    "latent_continuation": true
+  },
+  "output": {
+    "native_canvases": [
+      [
+        1344,
+        768
+      ],
+      [
+        768,
+        1344
+      ]
+    ],
+    "fps": 24,
+    "frame_grid": "17k+5",
+    "context_frames": 5,
+    "resize": false,
+    "spatial_crop": false,
+    "steps": 6,
+    "sampler": "lcm",
+    "sigmas": [
+      1.0,
+      0.972973,
+      0.923077,
+      0.8,
+      0.571429,
+      0.333333,
+      0.0
+    ],
+    "lora_strength": 1.0
+  },
+  "template_commit": "ea7faae6999fb31338f43408ff4a575bd3f7d9a0",
+  "template_sha256": "ae9e656deb54043a8daec5b47c065207db1b43775380cf14e43229921bb79092",
+  "custom_archives": [
+    {
+      "name": "h3_motion_context",
+      "url": "https://codeload.github.com/NikoDemon80/ComfyUI-H3-Motion-Context/zip/725a731e644c669601799da1eb63f4e7497c628f",
+      "sha256": "df79253cf3a48f7d02965d6f9364dba572cca1cdbe97afe7382b962c2863d5b2",
+      "directory": "ComfyUI-H3-Motion-Context-725a731e644c669601799da1eb63f4e7497c628f"
+    }
+  ]
+}

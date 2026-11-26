@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "profile": "relay-comfy-x2-factory-v1",
+  "comfy_commit": "989d93d0d968e704c589ce0146bb18c77f6b50cc",
+  "comfy_weights": {
+    "diffusion_models/relayvsr_x2_lightx2v_int8_convrot.safetensors": "240e75e0c17cf2845d559b25254a230ff7458f81449d7a8c5e7e3fb8275c7b3c",
+    "vae/relayvsr_flash_vae_x2_fp32.safetensors": "b5bb0339acb5b52545911ea29a51b4c5b805776a779222b5a14591571f42e21c"
+  },
+  "relay_commit": "e856773350f53036d825404c9ea9228e6dffadca",
+  "rife_commit": "bbfd2ea90910789a860ea3e2b32a240cd577b75e",
+  "rife_zip_sha256": "e63d481b7ae5d4a4e6ad7ac5b410ff78f3bf7be3b51b2e38ca8152747abde5b4",
+  "template_revision": "fd532c9a156ed5fb2254c4f137d8ce4fea2d48be",
+  "unet": "diffusion_models/relayvsr_x2_lightx2v_int8_convrot.safetensors",
+  "vae": "vae/relayvsr_flash_vae_x2_fp32.safetensors",
+  "weights_revision": "202c35eb0a5bb64b7017d5a09ea9acea87b7a081"
+}

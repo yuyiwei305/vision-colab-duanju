@@ -1,0 +1,164 @@
+{
+  "schema_version": 1,
+  "profile": "h3-v4-g4-fullframe-v1",
+  "pipeline": "v4",
+  "status": "formal_standard_with_scoped_gpu_evidence",
+  "authority": "2026-11-10 用户明确采用 H3 V4 文戏/打斗自动切换作为新 H3 任务的正式标准。",
+  "scope": "all_new_h3_tasks_in_this_workspace",
+  "generation_mode": "reference",
+  "entrypoint": {
+    "prepare": "bash scripts/drama task prepare <作品> --id <任务ID> --plan <plan.json> --reason <原因>",
+    "preflight": "python3 scripts/h3_production.py preflight --batch <batch.json> --offline",
+    "skill_workflow": "docs/h3/forest-laoli-workflow.md",
+    "explicit_pipeline_required": true,
+    "project_cli_alias": "bash scripts/drama task",
+    "required_task_fields": [
+      "authorization",
+      "scope",
+      "finite_ccu_budget",
+      "finite_deadline"
+    ],
+    "note": "新任务按工厂手册 episode plan → task create/prepare/run，显式登记本次授权、有限总预算和期限；工厂固定 V4 并调用 H3 三阶段专项门禁。low_level_prepare 保留专项底层和历史兼容。旧批次沿原账本及执行包恢复。",
+    "low_level_prepare": "python3 scripts/h3_production.py prepare --pipeline v4",
+    "plan": "bash scripts/drama episode plan <作品> --episode EP001 --goal clips",
+    "create": "bash scripts/drama task create <作品> --id <任务ID> --plan <plan.json> --authorization <依据> --max-ccu <额度> --max-seconds <秒数>"
+  },
+  "runtime_manifest": "docs/h3/workflow-v4-g4-runtime.json",
+  "runtime_sha256": "1bdead51260d3791850926432ca0a47de2670488793a7733f45c2b7c65dd7fec",
+  "foundation_lock": "docs/h3/workflow-v4-foundation.lock.json",
+  "lock_status_semantics": "foundation_lock 记录历史执行包的基础 SHA；新任务按 execution_release 校验运行清单、控制器和编译器。参考容量已离线验证，G4 在 5–9 张参考图下的显存与耗时待实测。",
+  "documentation": "docs/h3/workflow-v4-colab-adaptation-20261110.md",
+  "model": "cobijada-h3-hybrid-int8-convrot",
+  "text_encoder": "qwen3vl_32b_minimax_h3_int8_convrot.safetensors",
+  "scene_routing": {
+    "policy": "local-action-cues-v1-chain-consistent",
+    "source": "正式视频提示词.md的summary/detailed_description；prepare前判定并冻结依据",
+    "source_override_field": "H3档位：文戏/打斗/自动",
+    "continuation_chain": "one_scene_profile_per_actual_av_latent_chain; any_action_selects_action; explicit_conflict_fails",
+    "runtime_reclassification": false
+  },
+  "common_lora": {
+    "name": "minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy.safetensors",
+    "strength": 0.7
+  },
+  "scene_profiles": {
+    "drama": {
+      "label": "文戏",
+      "steps": 8,
+      "transition_step": 6,
+      "expected_nfe": 9,
+      "loras": [
+        {
+          "name": "h3-realism-people-t2v-i2v-r2v.safetensors",
+          "strength": 0.8
+        },
+        {
+          "name": "Minimax H3真实电影质感V0.1.safetensors",
+          "strength": 0.3
+        }
+      ]
+    },
+    "action": {
+      "label": "打斗",
+      "steps": 12,
+      "transition_step": 8,
+      "expected_nfe": 13,
+      "loras": [
+        {
+          "name": "H3_Combat_V2.safetensors",
+          "strength": 0.8
+        },
+        {
+          "name": "FrameRush-Minimax-V2_c2-st1500.safetensors",
+          "strength": 0.5
+        },
+        {
+          "name": "H3_speed_slider_1.1.safetensors",
+          "strength": 5.0
+        }
+      ]
+    }
+  },
+  "scene_lora_stacks_mutually_exclusive": true,
+  "pika_lora_enabled": false,
+  "sampler": "euler",
+  "scheduler_name": "simple",
+  "sigma_refiner": {
+    "extra_steps": 1,
+    "start_at_sigma": 0.7,
+    "end_at_sigma": 0.0,
+    "spacing": "cosine"
+  },
+  "self_lift": {
+    "lowres_scale": 0.5,
+    "highres_tiling": false,
+    "temporal_chunking": false
+  },
+  "special_low_vram_paths_enabled": false,
+  "oom_fallback": false,
+  "default_attention_backend": "comfy_kitchen_int8",
+  "sparse_attention": "sol-attn",
+  "declared_duration_seconds": {
+    "min": 4,
+    "max": 15
+  },
+  "frame_rate": 24,
+  "frame_grid": "Easy nearest 17k+5; actual continuation frames follow the frozen job parameters",
+  "native_canvases": [
+    [
+      1344,
+      768
+    ],
+    [
+      768,
+      1344
+    ]
+  ],
+  "reference_capabilities": "docs/h3/workflow-v4-g4-runtime.json#/capabilities",
+  "reference_audio": "same_work_reviewed_voice_wav_or_breeze_tts2_voice_design; timbre_only; listening_acceptance_requires_review",
+  "continuation": {
+    "kind": "actual_av_latent",
+    "context_parameters": "同类横屏短链优先显式选 22v18a；其余规格按当次正式来源、冻结 job 与预检核对，不改变编译器缺省档。",
+    "gpu_validated": true,
+    "gpu_tested_context": "22v18a"
+  },
+  "spatial_crop": false,
+  "delivery_resize": false,
+  "max_cases_per_batch": 32,
+  "gpu_validation": true,
+  "gpu_tested_duration_seconds": [
+    5,
+    6
+  ],
+  "gpu_tested_canvases": [
+    [
+      1344,
+      768
+    ]
+  ],
+  "content_acceptance": "not_asserted",
+  "future_production_authority": "per_user_task_not_blanket_generation",
+  "scheduler": {
+    "revision": "task-budget-concurrency-v1",
+    "max_instances": 2,
+    "batch_limit_ccu": 50,
+    "batch_limit_seconds": 28800,
+    "shared_task_contract_required_for_parallel": true
+  },
+  "output_contract": {
+    "revision": "native-only-independent-v1",
+    "independent_mp4_count": 1,
+    "independent_encoding_count": 1,
+    "native_directory": "制作成果/video",
+    "actual_continuation_mp4_count": 2,
+    "actual_continuation_master_directory": "制作成果/context-masters",
+    "av_latent": "retained_in_official_production_ledger",
+    "recovery_cache": "remove_duplicate_only_after_all_canonical_outputs_and_succeeded_run_committed_and_sha_verified; receipt.retained_path",
+    "intentional_deletion": "completed_exact_manifest; audit_acknowledged; run_collect_blocked_for_pruned_jobs",
+    "details": "docs/h3/native-output-and-retention.md"
+  },
+  "execution_release": {
+    "release": "factory-v21",
+    "manifest": "docs/factory/releases/factory-v21.json"
+  }
+}

@@ -1,0 +1,20 @@
+name: Offline factory checks
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install media tools
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg fontconfig fonts-noto-cjk
+      - name: Check factory release and skill routes
+        run: |
+          bash scripts/drama release verify > /dev/null
+          bash scripts/drama skills --check > /dev/null
+      - name: Run offline regression tests
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts -p 'test_*.py'
