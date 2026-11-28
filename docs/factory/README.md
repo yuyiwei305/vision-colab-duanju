@@ -36,6 +36,17 @@ bash scripts/drama episode work '作品/作品名' --episode EP001 --stage write
 
 ## 2. 本集规格与文档修订
 
+从正式分镜顺读画面时运行 `bash scripts/drama project read-through '作品/作品名' --episode EP001`。输出按原序列出每个 Shot 的起点、动作、终点和单列的画面文字。有段落映射时附 Sequence、Motion 和段内区间。第二遍加 `--with-sound` 显示声音字段。散写在其他说明中的字卡和原句需回正文核对；审查者在工单记下自己的观察。
+
+<a id="motion-review"></a>
+
+**局部补拍或验片。** `project review-motion` 按正式分镜的播放顺序找出指定 Motion 和两侧相邻段。开机前可读这几段的动作与声音。有回片后，勾选各段版本，填入剪入和剪出时间，即可在本地带原声连播。每个原片均核对官方成功回执、字节数和 SHA-256，续接段展示去重后的 native。若已有剪辑单，页面标出它实际引用的文件和区间。范围可重复指定，省略 `--html` 直接输出数据。有新回片时重新运行同一命令即可刷新审看页。
+
+```bash
+bash scripts/drama project review-motion '作品/作品名' --episode EP001 \
+  --motion MOTION-EP001-006 --html '/tmp/EP001-006-审看.html'
+```
+
 ```bash
 bash scripts/drama episode spec '作品/作品名' --episode EP001
 bash scripts/drama episode spec '作品/作品名' --episode EP001 \
@@ -73,7 +84,7 @@ bash scripts/drama episode spec '作品/作品名' --episode EP001 \
 bash scripts/drama episode plan '作品/作品名' --episode EP001 --goal clips --max-instances 2
 # 使用上一步返回的 plan 路径
 bash scripts/drama task create '作品/作品名' --id ep001-main --plan <plan.json> \
-  --authorization '<任务授权来源与范围>' --max-ccu <本次总上限> --max-seconds <本次总秒数>
+  --authorization '<任务授权来源与范围>' --max-ccu <本次总上限>
 bash scripts/drama task prepare '作品/作品名' --id ep001-main --plan <plan.json> --reason '首次生产'
 bash scripts/drama task run '作品/作品名' --id ep001-main
 ```
@@ -83,7 +94,7 @@ bash scripts/drama task run '作品/作品名' --id ep001-main
 - 整份视频提示词不再限制 32 段；每批最多 32 段，同一依赖组不能跨批拆开。
 - AV latent 链和动态原生音色依赖按完整连接组分片。同组超过 32 时先在正式文档中调整已听核 WAV 的复用方式；不能拆断真实续接链。
 - 同一分片的多个批次串行复用实例与模型；不同分片最多 2 台 G4。40 段以上的 4 台目标仍未开放，预览说明实际降档原因。
-- 任务契约冻结授权、总预算、总期限及执行版本；补拍追加 wave，旧 wave 保留原字节，不另起额度。
+- 任务契约冻结授权、CCU 总预算及执行版本。补拍追加 wave，历史批次和费用继续累计。
 - `--entry MOTION-...` 可重复传入，只选择本次范围；计划自动补齐必要依赖。已完成消费素材是否可复用，按正式来源及当前选用检查。
 - `episode impact --before <旧计划> --after <新计划>` 输出直接变化及依赖影响，不能代替内容审查。
 
@@ -98,26 +109,38 @@ bash scripts/drama task stop '作品/作品名' --id ep001-main --reason '<实�
 
 本地 `status` 不查询远端；`reconcile` 查原任务；`resume` 先取回已知结果再判断待执行范围。远端响应未知时保留 unknown，不能重新 POST。已完成文件丢失或有意删除不自动重生成。
 
+实例已分配而文件迟迟未到时，用同一任务的请求号分清「仍在推理」「远端已完成，等回执或取回」「受理待核」。报告已实际取回的段数。普通查询超时，可用该实例已有的连接交叉核对原回执，再沿原任务取回。只有分配阶段的容量等待才报告为排队。
+
 从 V20 起，Colab 分配已进入释放流程但尚未核实时，`task resume` 可按该批的原分配记录完成对账与释放。这次恢复止于资源收尾。
 
-如果实际扣费低于上限却停止提交，先核哪些请求已受理、哪些尚未提交，再核已释放波的结算差、活动租约费用上界、提交预留和硬停时间。用账本说明具体拦截条件，实扣与正在使用的上界分别记账。仍可继续时恢复原任务。
+从 V22 起，若 H3 官方尝试返回 `provider_not_submitted`，且 `task reconcile` 联机确认原实例已释放、该请求无本地结果及远端收据，可只为待生成段重新排产，在原任务追加一波。新波沿用任务当前已登记的额度，已产生的费用继续计入总账。
 
-需要升级既有任务的执行包时，先对账、取回结果并核实该任务实例已释放。按授权运行 `task upgrade-execution <作品> --id <任务> --authorization <依据>`。每次登记一个受支持的升级版本，到账本核对实际版本后再追加新轮。原预算与截止时间继续生效，受理未知时继续对账。
+如果实际扣费低于上限却停止提交，先核哪些请求已受理、哪些尚未提交，再核已释放波的结算差、活动租约费用上界、提交预留，以及收费实例按剩余额度推算的收尾时间。用账本说明具体拦截条件，实扣与正在使用的上界分别记账。仍可继续时恢复原任务。
 
-分波送审时，可在首波 `task prepare` 加 `--retain-runtime`。本波文件取回后保留原实例。后波复核正式输入后用 `task prepare --reuse-runtime`，承接同一任务唯一保留实例。以前的已提交请求须取回。账本证明从未提交的请求可随旧波结束。执行仍核验实例在线，沿用原总预算与期限。执行版本兼容时可移交保留实例。
+需要升级既有任务的执行包时，先对账、取回结果并核实该任务实例已释放。按授权运行 `task upgrade-execution <作品> --id <任务> --authorization <依据>`。每次登记一个受支持的升级版本，到账本核对实际版本后再追加新轮。旧任务的时间授权可在升级后通过 `task extend --ccu-only` 转为仅按累计 CCU 管理。
 
-额度或期限的变更按新增授权用 `task extend` 登记，所有租约须先结束。原期限已过、创作者批准从恢复时起继续时，用 `--from-now --additional-seconds <获准的续跑秒数>`；原任务累计费用和总上限继续生效。原生生图工具费用未接入 CCU 账本。
+分波送审时，可在首波 `task prepare` 加 `--retain-runtime`。本波文件取回后保留原实例。后波复核正式输入后用 `task prepare --reuse-runtime`，承接同一任务唯一保留实例。以前的已提交请求须取回。账本证明从未提交的请求可随旧波结束。复用前核验实例在线，同一实例的费用继续计入原任务。执行版本兼容时可移交保留实例。
 
-单实例任务的已释放租约，在分配前和释放后都确认账户空闲且存在有效余额扣减时按该扣减结算。多实例任务的同一波须确认共同空闲基线、所有实例已释放、结算后账户空闲、余额记录连续且未与其他波重叠，才一次计入合计扣减。未结清部分仍按时长上界估算。新单实例任务，或旧租约已结束且当前波只有一个批次的追加任务，按剩余额度与费率上界设硬释放时间并保留取回和解分配时间。预算与截止时间继续累计。
+额度变更在租约结束后按新增授权登记。使用 `task extend <作品> --id <任务> --max-ccu <累计上限> --ccu-only --authorization <依据>`，沿用原任务累计费用。原生生图工具费用单列。
+
+每次投产先用同档位最近的实跑估算一轮付费成本，把冷启动、素材上传、生成、取回和释放都算进去。按费率上界向上取整，再预留一次冷启动与本批高风险片段的补跑。小批补拍也按一次完整开机估预算。续跑的建议累计上限等于已结算费用加本轮所需额度，硬上限登记创作者确认值。
+
+拿卡前先合并已定稿、可独立执行的补拍；同一续接链按原依赖排。对多段共用的未验证拍法，可用原计划中最能暴露问题的一段先验，其回片可直接剪用。已有合格实片可复用，或创作者指定整批执行时，按现有证据和原批次推进。等创作者讨论结尾、选台词等工作放在申请 GPU 前。回报分开写「已取回几段／已按哪几处带声看过／哪些需修」；排队、加载、生成与取回以原任务进度为据。
+
+单实例任务释放后，若有可核验的空闲账户前后账单，则以余额扣减结算。多实例同波有共同空闲基线、所有实例已释放、扣减记录连续且未与其他波重叠时，统一结算一次。未结清的实例从最早可能发生计费的时刻按费率上界估算。工厂按剩余 CCU 给收费实例保留取回和释放余量。
+
+H3、Breeze 和 ReCaVSR 每运行 10 分钟自动写入 `progress-events.jsonl` 并向终端输出一条进度。支持通知的 macOS 会同时尝试发送桌面通知。报告包含当前阶段、已取回数量和适用时的 GPU 等待时长。机器可读的最终结果仍通过标准输出返回。
 
 <a id="colab-g4-allocation-503"></a>
 
 ### Colab G4 分配返回 HTTP 503
 
 1. **先定位分配阶段。** 核对原任务的 CLI 日志、实例列表和 CCU 账单。分配预检 `GET /tun/m/assign` 返回 200 只表示预检成功，实例以分配回执和实际会话为准。记录分配 POST 的状态、耗时及脱敏错误摘要。
-2. **保留原 `nbh`，有限等待。** H3、ReCaVSR 和 Breeze 共用 Colab 分配控制器，首次提交前把请求号和截止时间写入该批次的 `allocation-request.json`。每次退避后先查询同一 `nbh`，查到实例就接回，查无实例才重试。进程中断后仍使用同一笔记录。手工另开 `colab new` 会产生新的 `nbh`。[Colab CLI 分配恢复](https://github.com/googlecolab/google-colab-cli/blob/main/docs/01_session_management.md#http-timeout-and-allocation-recovery)
-3. **把超时设在授权窗口内。** 工厂按当次授权、任务余额和剩余期限预留取回及释放时间，每次分配最多累计等待 30 分钟。`COLAB_ALLOC_TIMEOUT` 可缩短该窗口。工厂按窗口限制单次 HTTP 请求，502／503／504 或可重试超时按 5、10、20 秒退避，之后每次最多 20 秒。已知的拒绝直接进入对账。模型初始化和生成各用自己的超时。
-4. **按对账结果续跑或停下。** 拿到实例后核实实例和模型已就绪，沿用冻结输入、绑定音色和原预算，只续跑确认未提交或可恢复的部分。初始化或等待回执超时，优先在可恢复的原实例核查初始化和生成状态。已出片先取回并逐段核验，再释放实例。分配期满仍未取得实例时停止分配，复查原 `nbh` 与实例列表，用 `task reconcile` 核原生成任务并记录任务、计费状态和剩余范围。
+2. **保留原 `nbh`。** H3、ReCaVSR 和 Breeze 共用分配控制器。首次提交前把申请号写入 `allocation-request.json`。每次退避后先查同一个号，查到实例就接回。进程中断后仍使用原记录。 [Colab CLI 分配恢复](https://github.com/googlecolab/google-colab-cli/blob/main/docs/01_session_management.md#http-timeout-and-allocation-recovery)
+3. **把分配重试看作排队。** 502／503／504、容量暂满、可重试的请求超时都进入等待状态。单次 HTTP 有超时。每个申请号约 30 分钟后重新对账，确认无实例才换号；对账暂不可用时继续查询原号。总排队时间没有截止点。
+4. **按 CCU 收尾。** 确认未分配的时间不计租约，受理未知时保留可能计费的上界。出现永久拒绝或触及预算时停止新增提交，尽可能取回已有产物，随后核实只释放本任务实例。
+
+旧版本的单批任务因分配到期且尚未提交任何生成时，可升级执行包，按相同生成范围重新排产，再用 `task prepare --retry-allocation` 追加一波。工厂重新查询原申请号，把对账记录带入新波次，沿用原任务预算。
 
 
 ## 4. 原生生图与资产回绑
@@ -170,7 +193,7 @@ bash scripts/drama timeline diff '作品/作品名' --episode EP001 \
 bash scripts/drama finish prepare '作品/作品名' --episode EP001 --id ep001-finish \
   --source <作品内成片.mp4> --cuts <切点帧数组.json> \
   --cuts-evidence '<实际核对记录>' --authorization '<本次增强授权>' \
-  --max-ccu <本次上限> --max-seconds <总秒数>
+  --max-ccu <本次上限>
 bash scripts/drama finish run --batch <上一步返回的batch.json>
 bash scripts/drama finish status --batch <batch.json>
 bash scripts/drama finish resume --batch <batch.json>
@@ -178,10 +201,23 @@ bash scripts/drama finish resume --batch <batch.json>
 
 切点文件是原片中下一镜开始的整数帧数组，例如 `[120, 264]`。核实无硬切则为 `[]`。prepare 核源 SHA、画幅、帧数、色彩、磁盘和独立预算。切点仅供 RIFE 跳过跨切插值。支持 24/25/30/50/60 整数恒定帧率、无旋转方形像素的 8-bit SDR，目标与源同帧率时直接回封原声音轨。升帧使用 `.local/finishing/rife-4.25.zip`，也可用 `--rife-zip` 指定符合锁定 SHA 的同一归档。
 
-已生成但下载中断时用 `resume` 取回原成片。补帧失败时取回可复用的超分母版，继续使用原任务预算及期限。已有经回执验证、同一源片的 ReCaVSR 无声母版，也可用 `--master <作品内母版.mp4>`，沿用 `--source` 的原声。释放仅针对本任务实例，成功后核分配列表。
+已生成但下载中断时用 `resume` 取回原成片。补帧失败时取回可复用的超分母版，按原任务的剩余额度和已登记约束继续。已有经回执验证、同一源片的 ReCaVSR 无声母版，也可用 `--master <作品内母版.mp4>`，沿用 `--source` 的原声。释放仅针对本任务实例，成功后核分配列表。
 
 ## 7. 发布、迁移与能力边界
 
-新任务绑定当前[执行清单](releases/factory-v24.json)和 SHA，使用本工作区的 `scripts/drama` 通道完成排产与准备。H3 参考素材容量由[运行清单](../h3/workflow-v4-g4-runtime.json)统一定义。5–9 张参考图在 G4 上的显存与耗时仍待实测。
+新任务绑定当前[执行清单](releases/factory-v25.json)和 SHA，使用本工作区的 `scripts/drama` 通道完成排产与准备。H3 参考素材容量由[运行清单](../h3/workflow-v4-g4-runtime.json)统一定义。5–9 张参考图在 G4 上的显存与耗时仍待实测。
 
-开始 H3 或增强任务前运行 `bash scripts/drama release verify`。新 H3 任务按当前专项技能指纹记录实际检查。已有任务继续用 `scripts/drama` 续做，工具按账本校验并调用任务锁定的执行包。 续做时需保留旧清单和对应的 `.local/factory-releases/` 快照。需要在原任务追加使用新版本的轮次时，按授权使用第 3 节的 `task upgrade-execution`，保留原任务与批次快照。
+开始 H3 或增强任务前运行 `bash scripts/drama release verify`。新 H3 任务按当前专项技能指纹记录实际检查。已有任务继续用 `scripts/drama` 续做，工具按账本校验并调用任务锁定的执行包。续做时需保留旧清单和对应的 `.local/factory-releases/` 快照。需要在原任务追加使用新版本的轮次时，按授权使用第 3 节的 `task upgrade-execution`，保留原任务与批次快照。
+
+### 从公开仓恢复旧执行包
+
+首次安装直接使用当前版本。若本机有旧任务，按账本版本复用已经保存的快照。缺少快照时，在仓库根目录运行对应的一行，从公开 Git 历史恢复它。浅克隆缺少这些提交时先运行 `git fetch --unshallow origin`。
+
+```bash
+git worktree add --detach .local/factory-releases/factory-v21 a4e678a4081c
+git worktree add --detach .local/factory-releases/factory-v22 92edc7847e8f
+git worktree add --detach .local/factory-releases/factory-v23 1067b9594247
+git worktree add --detach .local/factory-releases/factory-v24 0cb780f05723
+```
+
+继续 V21 原任务只需 V21 快照。将 V21 任务升级到 V25 需要上述四个快照。先完成原请求对账与实例释放，再在原任务上逐次运行 `task upgrade-execution`，依次核对返回的 V22、V23、V24、V25。任务仍保留原预算和已产生的费用。

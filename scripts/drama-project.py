@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Use accepted decisions to change the initialized project's aspect ratio."""
+"""Project commands and local review of generated footage."""
 import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 KEY = "skills/short-drama/scripts/project_tool.py"
@@ -32,4 +33,14 @@ def load_engine():
 
 
 if __name__ == "__main__":
-    raise SystemExit(load_engine().main())
+    engine = load_engine()
+    if sys.argv[1:2] == ["review-motion"]:
+        from drama_review_motion import main
+
+        raise SystemExit(main(engine, sys.argv[2:]))
+    if sys.argv[1:] in (["--help"], ["-h"]):
+        parser = engine.build_parser()
+        parser.epilog = "review-motion  按分镜顺序查看指定生成段、相邻段和已取回的原片。"
+        parser.print_help()
+    else:
+        raise SystemExit(engine.main())

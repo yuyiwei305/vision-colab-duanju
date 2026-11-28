@@ -44,6 +44,7 @@ EXECUTION_UPGRADES = (
     ('factory-v22', 'execution-upgrade-factory-v22.json', ('factory-v21',)),
     ('factory-v23', 'execution-upgrade-factory-v23.json', ('factory-v22',)),
     ('factory-v24', 'execution-upgrade-factory-v24.json', ('factory-v23',)),
+    ('factory-v25', 'execution-upgrade-factory-v25.json', ('factory-v24',)),
 )
 
 

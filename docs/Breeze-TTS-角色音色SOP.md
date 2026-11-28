@@ -17,7 +17,7 @@
 
 每角色一个正式 `tts` job：`source` 指向真实 `视觉设定.md`，`source_entry` 对应人物标题，`prompt` 为样句，`parameters.instruction` 为设计描述，`parameters.seed` 为角色 seed。通过 `bash scripts/drama produce prepare` 建准确预览；确认登记按任务授权执行，用户指定的确认点优先。
 
-有限批次沿用共享 [控制器](../scripts/breeze_tts_colab.py) 与 [远端 worker](../scripts/breeze_tts_colab_remote.py)，不写单集专属实现。批次记录本作品的唯一 batch/session、job 列表、项目外 adapter 配置、正式输出和 `resource_state`，以及 `model`、`revision`、`repo_commit`、实际 `worker_sha256`、授权、费用和时限。adapter 调用该控制器的 `adapter --batch`；凭据不写入项目。
+批次沿用共享 [控制器](../scripts/breeze_tts_colab.py) 与 [远端 worker](../scripts/breeze_tts_colab_remote.py)。批次记录本作品的唯一 batch/session、job 列表、项目外 adapter 配置、正式输出和 `resource_state`，以及 `model`、`revision`、`repo_commit`、实际 `worker_sha256`、授权和 CCU 上限。adapter 调用该控制器的 `adapter --batch`。凭据不写入项目。
 
 已采用的版本与实参：
 

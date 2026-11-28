@@ -1,5 +1,7 @@
 import json
 from pathlib import Path
+import shlex
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -154,11 +156,33 @@ class PlanTests(FactoryFixture):
 
 
 class TaskV2Tests(FactoryFixture):
-    def prepare_task(self, count=22):
+    def test_default_profile_examples_create_a_current_ccu_only_task(self):
+        self.motion_document()
+        profile = core.read_json(core.ROOT / 'docs/h3/default-profile.json')
+        values = {'<作品>': str(self.root), '<任务ID>': 'profile-check',
+                  '<依据>': 'offline fixture', '<额度>': '12.5'}
+
+        def run_example(name):
+            args = [values.get(arg, arg) for arg in shlex.split(profile['entrypoint'][name])]
+            return json.loads(subprocess.check_output(args, cwd=core.ROOT, text=True))
+
+        values['<plan.json>'] = run_example('plan')['plan']
+        task = run_example('create')
+        contract = task['contract']
+        self.assertEqual(task['state'], 'created_no_gpu')
+        self.assertEqual(contract['max_ccu'], 12.5)
+        self.assertIsNone(contract['max_seconds'])
+        self.assertIsNone(profile['scheduler']['batch_limit_seconds'])
+        self.assertNotIn('finite_deadline', profile['entrypoint']['required_task_fields'])
+        release = profile['execution_release']
+        self.assertEqual(contract['release'], release['release'])
+        self.assertEqual(contract['release_sha256'], core.file_sha(core.ROOT / release['manifest']))
+
+    def prepare_task(self, count=22, *, max_ccu=50):
         import colab_h3 as h
         self.motion_document(count)
         value = planning.plan(self.root, 'EP001')
-        runtime.create(self.root, 'fixture', value, authorization='test production scope', max_ccu=50, max_seconds=7200)
+        runtime.create(self.root, 'fixture', value, authorization='test production scope', max_ccu=max_ccu, max_seconds=7200)
         with patch('h3_production.guard', return_value={}):
             wave = runtime.append_wave(self.root, 'fixture', value, reason='initial')
         return h, value, wave, [core.read_json(p) for p in wave['batches']]
@@ -174,6 +198,34 @@ class TaskV2Tests(FactoryFixture):
         with patch('h3_production.guard', return_value={}):
             again = runtime.append_wave(self.root, 'fixture', value, reason='initial')
         self.assertEqual(again['batches'], wave['batches'])
+
+    def test_new_factory_task_and_amendment_use_only_cumulative_ccu(self):
+        import colab_h3 as h
+        self.motion_document(1)
+        plan = planning.plan(self.root, 'EP001')
+        result = runtime.create(self.root, 'ccu-only', plan, authorization='approved', max_ccu=20)
+        self.assertIsNone(result['contract']['max_seconds'])
+        with patch('h3_production.guard', return_value={}):
+            wave = runtime.append_wave(self.root, 'ccu-only', plan, reason='initial')
+        batch, = [core.read_json(path) for path in wave['batches']]
+        self.assertIsNone(batch['max_seconds'])
+        self.assertIsNone(core.read_json(batch['adapter_config'])['adapters']['h3-colab']['timeout_seconds'])
+        _, _, members = h.task_members(batch)
+        self.assertEqual(members, [batch])
+        event = runtime.extend(self.root, 'ccu-only', max_ccu=24, ccu_only=True, authorization='approved')
+        self.assertEqual(event['max_ccu'], 24)
+        self.assertIsNone(event['deadline'])
+
+    def test_old_timed_contract_admits_a_ccu_only_follow_up(self):
+        h, plan, _, prior = self.prepare_task(1)
+        runtime.extend(self.root, 'fixture', max_ccu=50, ccu_only=True, authorization='approved')
+        with patch('h3_production.guard', return_value={}):
+            wave = runtime.append_wave(self.root, 'fixture', plan, reason='resume with only a CCU cap')
+        batch, = [core.read_json(path) for path in wave['batches']]
+        _, contract, members = h.task_members(batch)
+        self.assertEqual(contract['max_seconds'], 7200)
+        self.assertEqual(members, [*prior, batch])
+        self.assertIsNone(batch['max_seconds'])
 
     def test_unfinished_wave_cannot_be_replaced_by_new_budget_or_attempt(self):
         _, value, _, batches = self.prepare_task(1)
@@ -258,6 +310,52 @@ class TaskV2Tests(FactoryFixture):
         self.assertFalse(runtime._terminal_batch(batch, production))
         self.assertEqual(runtime.job_state(self.root, batch, job, production, transport)['state'], 'unknown')
 
+    def test_released_unsubmitted_job_can_be_prepared_again_with_amended_cap(self):
+        from unittest.mock import Mock
+        h, plan, _, (batch,) = self.prepare_task(1, max_ccu=12)
+        production = h.engine()
+        job = production._read_job(self.root, batch['jobs'][0])
+        request = '842a2e74-210b-4781-b9bc-72597be56059'
+        run = {'run_id': '20261126T091106-18a2022e', 'job_id': job['job_id'],
+               'fingerprint': job['fingerprint'], 'status': 'failed', 'adapter': 'h3-colab',
+               'started_at': '2026-11-26T09:11:06Z', 'finished_at': '2026-11-26T09:11:19Z',
+               'provider_job_id': request, 'error': {'code': 'provider_not_submitted'}}
+        production._write_run(self.root, job['job_id'], run)
+        state = Path(batch['resource_state'])
+        core.write_json(state.parent / 'graphs' / (request + '.json'), {})
+        core.write_json(state, {'state': 'released', 'endpoint': 'owned-instance',
+                                'release_requested_at': 10, 'finished_at': 12, 'usage_after': {'count': 0}})
+        path = runtime.task_path(self.root, 'fixture')
+        account = path.with_name('accounting.json')
+        core.write_json(account, {'task_sha256': core.file_sha(path), 'deadline': 7300})
+        runtime.extend(self.root, 'fixture', max_ccu=40, additional_seconds=3600,
+                       authorization='approved')
+        original = [p.read_bytes() for p in (path, account, Path(batch['batch_file']), state)]
+        self.assertFalse(runtime._terminal_batch(batch, production))
+
+        transport = Mock()
+        transport.control.return_value = []
+        with patch.object(h, 'Colab', return_value=transport):
+            status = runtime.reconcile(self.root, 'fixture', online=True)
+        row = status['batches'][0]['jobs'][0]
+        self.assertEqual(row.get('provider_acceptance'), 'not_submitted')
+        self.assertEqual(row['request_id'], request)
+        self.assertTrue(runtime._terminal_batch(batch, production))
+        transport.remote.assert_not_called()
+
+        evidence = state.with_name('remote-evidence.json')
+        core.write_json(evidence, {'receipts': [{'request_id': request, 'state': 'unknown'}]})
+        self.assertFalse(runtime._terminal_batch(batch, production))
+        core.write_json(evidence, {'receipts': []})
+        with patch('h3_production.guard', return_value={}):
+            wave = runtime.append_wave(self.root, 'fixture', plan, reason='confirmed never submitted')
+        child = core.read_json(wave['batches'][0])
+        self.assertEqual(child['max_ccu'], 40)
+        self.assertNotEqual(child['jobs'], batch['jobs'])
+        self.assertFalse(Path(child['resource_state']).exists())
+        self.assertEqual(production._read_run_history(self.root, job['job_id']), [run])
+        self.assertEqual([p.read_bytes() for p in (path, account, Path(batch['batch_file']), state)], original)
+
     def test_upgrade_keeps_original_contract_and_accounting(self):
         path = runtime.task_path(self.root, 'fixture')
         core.write_json(path, {'schema_version': 2, 'release': 'factory-v2',
@@ -294,7 +392,8 @@ class TaskV2Tests(FactoryFixture):
         core.write_json(accounting, {'deadline': 7300, 'authorized_max_ccu': 15})
         before = path.read_bytes(), accounting.read_bytes()
         previous = None
-        for target in ('factory-v18', 'factory-v19', 'factory-v20', RELEASE):
+        for target in ('factory-v18', 'factory-v19', 'factory-v20', 'factory-v21', 'factory-v22', 'factory-v23',
+                       'factory-v24', RELEASE):
             record = runtime.upgrade_execution(self.root, 'fixture', authorization='approved')
             self.assertEqual(record['release'], target)
             self.assertEqual(record['previous'], previous)

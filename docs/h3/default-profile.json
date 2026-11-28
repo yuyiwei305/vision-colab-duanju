@@ -156,7 +156,7 @@
     "details": "docs/h3/native-output-and-retention.md"
   },
   "execution_release": {
-    "release": "factory-v24",
-    "manifest": "docs/factory/releases/factory-v24.json"
+    "release": "factory-v25",
+    "manifest": "docs/factory/releases/factory-v25.json"
   }
 }

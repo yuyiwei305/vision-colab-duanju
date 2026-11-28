@@ -148,7 +148,7 @@ fc-list ':lang=zh-cn' family
 
 1. **故事材料**。一句灵感、大纲、完整剧本或旧工程都可以。已有作品直接提供作品目录和目标集，Agent 核对交接后接续。
 2. **成片要求**。给画幅、预计时长、语言和本次做到哪一步。有必须保留的对白、已有角色图、配音或参考视频时，把来源一并交代。
-3. **媒体生成权限**。需要实际出片时给本次范围、期限和算力预算。预算未确定时，可以先交分镜、提示词和排产预览。
+3. **媒体生成权限**。实际出片时给本次范围和累计算力上限（CCU）。如果有交付时间或指定停点，一起写明。预算未确定时，可以先交分镜、提示词和排产预览。
 
 新作品可把下面的任务交给 Agent。
 
@@ -167,9 +167,10 @@ Agent 按阶段读文档、做创作判断，并用 `bash scripts/drama` 验证�
 
 ```text
 续做「作品/作品名」EP001，用 H3 V4 生成 [指定段落或镜头]。
-这次授权上限为 [CCU]，最晚在 [日期、时间和时区] 停止。
+本次累计算力上限为 [CCU]。
 按工厂 SOP 核对参考实图、声画时长和续接，在预算内冻结并执行本批。
-取回后核对实际视频和对白，释放并复查本任务实例，汇报可用素材和实际消耗。
+取回校验后释放并复查本任务实例。按分镜顺序带原声连看前后镜，
+交付可用版本、剪入剪出时间和实际消耗。
 ```
 
 | 阶段 | 开始前核对 | 操作入口 |
@@ -178,6 +179,8 @@ Agent 按阶段读文档、做创作判断，并用 `bash scripts/drama` 验证�
 | 视频投产 | 核实实图、段落、声画时长、参考槽、生成预算。工厂按锁定清单在 Colab 部署 ComfyUI、节点与模型权重，本机只管理输入、进度和回片 | [H3 工作流](docs/h3/forest-laoli-workflow.md) · [段落契约](docs/h3/shot-motion-contract.md) · [排产与恢复](docs/factory/README.md#3-h3-统一排产与总预算) |
 | 剪辑与交付 | 打开 ChatCut 工程，确认需要处理的轨道、源片版本和字幕。交付验实际导出 | [剪辑 SOP](创作者决策/剪辑SOP.md) |
 | 按需增强 | 锁定原片、目标帧率与预算。RIFE 补帧用上游 4.25 原版 ZIP，放入 `.local/finishing/rife-4.25.zip` 或通过 `--rife-zip` 指定 | [成品画质增强 SOP](docs/成品画质增强SOP.md) |
+
+制作分镜时，`project read-through` 可以按成片顺序先读画面，再恢复声音。补拍时，`project review-motion` 可以并排查看各版原片，并按指定区间连播相邻段。工厂按累计 CCU 管理新任务，每 10 分钟报告实际阶段与已取回段数。[片段审看命令](docs/factory/README.md#motion-review) · [排队与预算](docs/factory/README.md#3-h3-统一排产与总预算)
 
 默认 H3 Colab 路线用上文的 OAuth2 登录，无需另配 MiniMax API Key。可选第三方 API 通道按适配器契约单独配置，通过 `DRAMA_ADAPTER_CONFIG` 指向仓库外的配置文件。[适配器契约](ref/drama-skills/skills/short-drama-produce/references/adapter-contract.md)
 

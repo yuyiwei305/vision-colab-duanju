@@ -475,6 +475,10 @@ def task_spec(batch):
 
 def task_members(batch):
     path, task = task_spec(batch)
+    accounting_path = path.with_name('accounting.json')
+    accounting = read_json(accounting_path) if accounting_path.exists() else {}
+    clock_removed = (task['schema_version'] == 2
+                     and accounting.get('deadline', task['max_seconds']) is None)
     members, jobs, entries, sessions, states, outputs = [], set(), set(), set(), set(), set()
     root = Path(task['project'])
     production = engine()
@@ -488,7 +492,8 @@ def task_members(batch):
                 or member.get('profile') not in EPISODE_PROFILES
                 or not 0 < member.get('max_rate', 0) <= 15
                 or member['max_ccu'] > task['max_ccu']
-                or member['max_seconds'] > task['max_seconds']
+                or (not clock_removed and (
+                    member['max_seconds'] is None or member['max_seconds'] > task['max_seconds']))
                 or (member['session'] in sessions and not (task['schema_version'] == 2 and member.get('runtime_from') in task['batches']))
                 or member['resource_state'] in states):
             raise H3Error('task_ownership_or_limits_mismatch')

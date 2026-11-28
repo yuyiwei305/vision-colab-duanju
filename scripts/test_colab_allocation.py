@@ -1,4 +1,5 @@
 import importlib.util
+import math
 import tempfile
 import unittest
 from pathlib import Path
@@ -68,6 +69,66 @@ class AllocationTests(unittest.TestCase):
                     allocation.allocate(transport, state, 'G4', 1004)
             self.assertEqual([call[0] for call in transport.calls], ['attempt', 'lookup'])
             self.assertEqual(transport.calls[0][2], transport.calls[1][2])
+
+    def test_expired_window_archives_unassigned_request_before_opening_next_window(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory) / 'resources.json'
+            write_json(state, {'state': 'allocating'})
+            now = [1000]
+            transport = FakeTransport([{'state': 'retry', 'status': 503}, {'state': 'unassigned'},
+                                       {'state': 'assigned', 'endpoint': 'next-window-vm'}])
+
+            def wait(seconds):
+                now[0] += 1800
+
+            with patch.object(allocation.time, 'time', side_effect=lambda: now[0]), \
+                 patch.object(allocation.time, 'sleep', side_effect=wait):
+                self.assertEqual(allocation.allocate(transport, state, 'G4', 5000), 'next-window-vm')
+            first, lookup, second = transport.calls
+            self.assertEqual((first[0], lookup[0], second[0]), ('attempt', 'lookup', 'attempt'))
+            self.assertEqual(first[2], lookup[2])
+            self.assertNotEqual(first[2], second[2])
+            self.assertEqual((first[3], second[3]), (2800, 4600))
+            history, = read_json(state.with_name('allocation-request.json'))['previous_requests']
+            self.assertEqual(history['request_id'], first[2])
+            self.assertEqual(history['events'][-1]['state'], 'unassigned')
+
+    def test_unknown_readback_does_not_open_another_window(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory) / 'resources.json'
+            write_json(state, {'state': 'allocating'})
+            write_json(state.with_name('allocation-request.json'), {
+                'session': FakeTransport.session, 'gpu': 'G4', 'request_id': 'original',
+                'deadline': 1000, 'attempts': 1, 'previous_requests': [],
+            })
+            transport = FakeTransport([{'state': 'retry', 'status': 503}])
+            with patch.object(allocation.time, 'time', return_value=1001):
+                with self.assertRaisesRegex(FactoryError, 'colab_allocation_lookup_unverified'):
+                    allocation.allocate(transport, state, 'G4', 5000)
+            self.assertEqual([call[0] for call in transport.calls], ['lookup'])
+            self.assertEqual(read_json(state.with_name('allocation-request.json'))['previous_requests'], [])
+
+    def test_ccu_only_keeps_waiting_through_capacity_and_inconclusive_readback(self):
+        with tempfile.TemporaryDirectory() as directory:
+            state = Path(directory) / 'resources.json'
+            write_json(state, {'state': 'allocating'})
+            now = [1000]
+            transport = FakeTransport([{'state': 'rejected', 'status': 412},
+                                       {'state': 'retry', 'status': 503},
+                                       {'state': 'unassigned'},
+                                       {'state': 'assigned', 'endpoint': 'next-window-vm'}])
+
+            def wait(seconds):
+                now[0] += 3600
+
+            with patch.object(allocation.time, 'time', side_effect=lambda: now[0]), \
+                 patch.object(allocation.time, 'sleep', side_effect=wait):
+                self.assertEqual(allocation.allocate(transport, state, 'G4', math.inf), 'next-window-vm')
+            first, unclear, confirmed, replacement = transport.calls
+            self.assertEqual(first[2], unclear[2])
+            self.assertEqual(first[2], confirmed[2])
+            self.assertNotEqual(first[2], replacement[2])
+            self.assertTrue(all(math.isfinite(call[3]) for call in transport.calls))
 
     def test_permanent_rejection_stops_retries(self):
         with tempfile.TemporaryDirectory() as directory:

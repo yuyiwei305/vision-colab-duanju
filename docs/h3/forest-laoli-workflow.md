@@ -12,7 +12,7 @@ python3 scripts/h3_production.py skill --stage review
 
 项目入口负责触发。分镜、提示词各自写回 `分镜.md`、`视频提示词.md`；专项审查用 `short-drama-review` 定位问题，修订回对应 owner。技能文件缺失或不可读，暂停依赖它的步骤。单阶段仅记录实际完成的阶段和镜头；不补写没有执行的阶段。
 
-**分镜开始前**读 [段落契约](shot-motion-contract.md)。正式关系为 Sequence → Motion → Shot。先定观众看到的动作、切点与声音，再决定每次请求包含哪些镜头。
+**分镜开始前**读 [段落契约](shot-motion-contract.md)。正式关系为 Sequence → Motion → Shot。先定观众需要看到的行动、后果与切点，在这些画面上校准读稿和反应时间，再决定每次请求包含哪些镜头。
 
 默认使用可复用资产。图、音频及混合输入容量见[运行清单](workflow-v4-g4-runtime.json)的 `capabilities`。完全独立 Motion 的起镜符合[冲击帧条件](shot-motion-contract.md#冲击帧与-h3-构图参考)时，可用一张 `用途：构图` 的 `reference_image`，占本段参考图的一槽。分镜与视频提示词同步同一 REF。AV latent 续接链首与后续段均不挂构图图。
 
@@ -59,6 +59,8 @@ python3 scripts/h3_production.py continuity --project '<作品目录>' --episode
 - **storyboard** 核成片高点和状态交接。已选冲击帧写清配图理由、时点及用途。新集首批核整集节拍，后续批次及局部补拍核适用范围。
 - **prompts** 把构图关系、动作起点和信息先后写进对应 `MOTION-*`。送 H3 的冲击帧写清只控制的起镜关系。核方向、道具状态、动作后果、文戏/打斗选档、起声及净可见区。
 - **review** 对照[冲击帧验收](../image-generation-sop.md#visual-pacing-image-review)记录，核已选图的文件、来源指纹、实际画面和该时点的信息边界。只有完全独立 Motion 的起镜可挂图。
+
+对照[分镜的关键拍](../../.agents/skills/storyboard-logic/SKILL.md#给关键拍选机位)，把实际素材的职责写进 `detailed_description` 对应的 Shot。人物表确定台词归属，机位还要能看到分镜选定的脸、嘴和听者方向。人物组合图供身份与衣着参考，人物的朝向、姿态和光线取自当场。关键姿态用当前取景能辨认的关系写出，例如侧面能分清谁在前、谁伏在背上。要求连续变形时，把中间轮廓可见的时点放在遮挡或切镜之前。画内说长句，先给露口机位和完整收声的净时长。
 
 正式入口校验三阶段记录和已绑定参考的验收指纹。是否需要冲击帧由执行者按分镜判断，取回后按[节奏 SOP](../visual-pacing-sop.md)核实际开场、揭晓时点、动作后果、续接及对白。
 

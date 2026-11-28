@@ -17,7 +17,7 @@
 | 1–2 收本与立项 | `short-drama` 核原稿、范围和已有成果，通过 `project`、`episode spec` 确认对应规格。 |
 | 3–4 开发与剧本 | `short-drama-develop/write` 加载对应剧作资料。已有本地编剧指南的工作区同时加载该指南。正式剧本写清场次、时间关系、关键变化和声音职责。 |
 | 5 资产与音色设计 | `short-drama-assets` 维护 `视觉设定.md`。各时段的造型、场景和道具状态注明生效场次。 |
-| 6 分镜 | `short-drama-storyboard` 按 [`storyboard-logic`](.agents/skills/storyboard-logic/SKILL.md#分镜) 通读目标集完整剧本，先排跨场跨幕，再排场内镜头与按风险预演。H3 设计前加载 `forest-laoli-h3`。 |
+| 6 分镜 | `short-drama-storyboard` 按 [`storyboard-logic`](.agents/skills/storyboard-logic/SKILL.md#分镜) 通读整集。先定段落的剧情变化、跨场交接和观众要看见的证据，再排场内调度与切点。静音顺读后恢复声音校准表演与镜长，最后映射 Motion。H3 设计前加载 `forest-laoli-h3`。 |
 | 7–8 生图与冲击帧 | `short-drama-image-prompts → short-drama-produce`。按[生图 SOP](docs/image-generation-sop.md)登记和验收实图，消费镜头就绪后回绑。冲击帧按分镜需求启用。 |
 | 9–12 视频提示词、投产、取回与审查 | `short-drama-video-prompts/review/produce` 用同一份分镜交接。H3 提示词和审查加载 `forest-laoli-h3`，在第 10、12 步按 `storyboard-logic` 复核。通过工厂冻结、运行、取回和释放。 |
 | 13–17 剪辑、增强、后期与成片验收 | `short-drama-edit/review` 按[剪辑 SOP](创作者决策/剪辑SOP.md)锁画、按需增强、完成字幕与混音，回看实际导出。 |

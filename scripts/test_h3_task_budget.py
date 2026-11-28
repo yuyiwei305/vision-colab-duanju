@@ -76,6 +76,27 @@ class TaskBudgetTests(unittest.TestCase):
     def test_fifty_ccu_eight_hours_per_partition_is_valid(self):
         for batch in self.batches: h.validate_batch(batch)
 
+    def test_ccu_only_wait_does_not_reduce_the_paid_lease(self):
+        batch = self.batches[0]
+        task = {**self.contract, 'schema_version': 2, 'max_ccu': 10, 'max_instances': 1}
+        h.write_json(self.task.with_name('accounting.json'),
+                     {'started_at': 100, 'deadline': None, 'task_sha256': h.digest(self.task)})
+        resource = Path(batch['resource_state'])
+        with patch.object(h, 'task_members', return_value=(self.task, task, [batch])):
+            with patch.object(h.time, 'time', return_value=100):
+                state = h.prepare_task_runtime(batch, self.provider(), self.production)
+            self.assertIsNone(state['deadline'])
+            h.ensure_budget(batch, state, now=10900, reserve=240)
+            self.assertEqual(h.task_accounting(batch, now=10900)['spent_ccu_upper_estimate'], 0)
+
+            h.write_json(resource.with_name('allocation-request.json'),
+                         {'request_id': 'owned-request', 'endpoint': 'owned-g4'})
+            h.write_json(resource.with_name('allocation-clock.json'),
+                         {'request_id': 'owned-request', 'possible_assignment_at': 10900})
+            self.assertEqual(h.task_accounting(batch, now=11140)['spent_ccu_upper_estimate'], 1)
+            with self.assertRaisesRegex(h.H3Error, 'task_budget_or_deadline_exhausted'):
+                h.ensure_budget(batch, state, now=13300, reserve=0)
+
     def test_two_live_instances_use_their_own_time_and_original_task_deadline(self):
         first, second = self.start_two()
         self.assertLessEqual(second['deadline'], 100 + 28800)

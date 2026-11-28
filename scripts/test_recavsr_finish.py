@@ -49,6 +49,8 @@ class FinishTests(unittest.TestCase):
         batch, job = self.prepare("1920x1080")
         parameters = job["parameters"]
         self.assertEqual(job["adapter"], "recavsr-comfy-colab")
+        self.assertIsNone(batch["max_seconds"])
+        self.assertIsNone(core.read_json(batch["adapter_config"])["adapters"][job["adapter"]]["timeout_seconds"])
         self.assertEqual((parameters["output_width"], parameters["output_height"]), (3840, 2160))
         self.assertEqual((parameters["target_fps"], parameters["target_frames"]), (60, 13))
         self.assertEqual(len(job["outputs"]), 1)

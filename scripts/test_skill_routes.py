@@ -38,6 +38,52 @@ class SkillRoutesTests(unittest.TestCase):
         image = next(row for row in route['skill_files'] if row['skill'] == 'imagegen')
         self.assertEqual(image['text'], '# Image fixture\n')
 
+    def test_reads_picture_in_cut_order_then_restores_sound(self):
+        project = Path(self.env['HOME']) / 'fixture'
+        self.drama('project', 'init', str(project), '--title', 'Fixture')
+        folder = project / '剧集/EP001'
+        folder.mkdir(parents=True, exist_ok=True)
+        board = folder / '分镜.md'
+        sequence = 'SEQUENCE-EP001-001'
+        motion = 'MOTION-EP001-001'
+        board.write_text(
+            f'## {sequence} · 选择\n- 计划时长：5s\n'
+            f'## {motion} · 对话\n- 段落：{sequence}\n- 段落区间：0s-5s\n- 入段：独立\n'
+            f'## SHOT-EP001-001 · 决定离开\n- 生成段：{motion}\n- 段内区间：0s-3s\n'
+            '- 职责：揭开去意\n- 起点：钥匙在手。\n- 唯一动作：她松手。\n- 终点：钥匙落在桌上。\n'
+            '- 声音：两人仍在交谈。\n'
+            f'## SHOT-EP001-002 · 后果\n- 生成段：{motion}\n- 段内区间：3s-5s\n'
+            '- 起点：钥匙在桌上。\n- 唯一动作：他收回手。\n- 终点：钥匙留在桌上。\n'
+            '- 声音：门外一声响。\n- 画面文字：打烊\n', encoding='utf-8')
+        command = ('project', 'read-through', str(project), '--episode', 'EP001')
+        before = board.read_bytes()
+        visual = self.drama(*command)
+        self.assertEqual(visual['issues'], [])
+        first, second = visual['shots']
+        self.assertEqual(first, {
+            'sequence': sequence, 'motion': motion, 'interval': [0, 3], 'shot': 'SHOT-EP001-001',
+            '起点': '钥匙在手。', '唯一动作': '她松手。', '终点': '钥匙落在桌上。'})
+        self.assertEqual((second['shot'], second['起点'], second['画面文字']),
+                         ('SHOT-EP001-002', '钥匙在桌上。', '打烊'))
+        restored = self.drama(*command, '--with-sound')['shots']
+        self.assertEqual([row.pop('声音') for row in restored], ['两人仍在交谈。', '门外一声响。'])
+        self.assertEqual(restored, visual['shots'])
+        self.assertEqual(board.read_bytes(), before)
+
+    def test_read_through_keeps_partial_shot_on_legacy_board(self):
+        project = Path(self.env['HOME']) / 'fixture'
+        self.drama('project', 'init', str(project), '--title', 'Fixture')
+        folder = project / 'episodes/EP001'
+        folder.mkdir(parents=True)
+        (folder / '分镜.md').write_text(
+            '## SHOT-EP001-001 · 陌生人\n- 起点：门虚掩。\n- 唯一动作：门开了。\n',
+            encoding='utf-8')
+        result = self.drama('project', 'read-through', str(project), '--episode', 'EP001')
+        self.assertEqual(result['source'], 'episodes/EP001/分镜.md')
+        self.assertEqual(result['shots'], [{'shot': 'SHOT-EP001-001', '起点': '门虚掩。',
+                                            '唯一动作': '门开了。', '终点': ''}])
+        self.assertEqual(result['issues'], ['SHOT-EP001-001: 缺少终点'])
+
     def test_reads_storyboard_and_h3_docs_in_work_order(self):
         project = Path(self.env['HOME']) / 'fixture'
         self.drama('project', 'init', str(project), '--title', 'Fixture', '--aspect-ratio', '9:16')
