@@ -40,6 +40,7 @@ EXECUTION_UPGRADES = (
     ('factory-v19', 'execution-upgrade-factory-v19.json', ('factory-v18',)),
     ('factory-v20', 'execution-upgrade-factory-v20.json', ('factory-v19',)),
     ('factory-v21', 'execution-upgrade-factory-v21.json', ('factory-v20',)),
+    ('factory-v22', 'execution-upgrade-factory-v22.json', ('factory-v21',)),
 )
 
 
@@ -175,11 +176,12 @@ def _released_uncollected(state_path, state, run, request):
     """A removed ephemeral VM cannot still run this request or return its local files."""
     release_at = state.get('finished_at')
     usage = state.get('usage_after', {})
+    code = run.get('error', {}).get('code')
     if (state.get('state') != 'released' or not state.get('endpoint')
             or not isinstance(release_at, (int, float)) or not state.get('release_requested_at')
             or type(usage.get('count')) is not int or usage['count'] < 0
             or run.get('status') != 'failed' or run.get('adapter') != 'h3-colab'
-            or run.get('error', {}).get('code') not in ('colab_command_failed', 'colab_response_unknown')
+            or code not in ('colab_command_failed', 'colab_response_unknown', 'provider_not_submitted')
             or not isinstance(request, str)):
         return False
     try:
@@ -191,7 +193,9 @@ def _released_uncollected(state_path, state, run, request):
     result = directory / 'results' / (request + '.json')
     evidence = directory / 'remote-evidence.json'
     if evidence.is_file():
-        if any(row.get('request_id') == request and row.get('state') == 'succeeded'
+        # A receipt for a reportedly unsubmitted request contradicts that result.
+        if any(row.get('request_id') == request
+               and (row.get('state') == 'succeeded' or code == 'provider_not_submitted')
                for row in read_json(evidence).get('receipts', [])):
             return False
     return ((directory / 'graphs' / (request + '.json')).is_file()
@@ -338,12 +342,15 @@ def append_wave(root, task_id, plan, *, reason, retain_runtime=False, reuse_runt
                        exclusive=True)
         created, previous_by_lane = {}, {0: parent} if parent else {}
         schedule = sorted(plan['schedule']['batches'], key=lambda b: (b['lane'], b['sequence']))
+        accounting_path = path.with_name('accounting.json')
+        accounting = read_json(accounting_path) if accounting_path.exists() else {}
+        max_ccu = min(50, accounting.get('authorized_max_ccu', contract['max_ccu']))
         for serial, part in enumerate(schedule):
             batch_id = f'{task_id}-w{index:02}-{serial:02}'
             filename = root / LEDGER / 'colab' / batch_id / 'batch.json'
             prior = previous_by_lane.get(part['lane'])
             if not filename.exists():
-                h3_episode.prepare(root, plan['episode'], batch_id, max_ccu=min(50, contract['max_ccu']),
+                h3_episode.prepare(root, plan['episode'], batch_id, max_ccu=max_ccu,
                     max_seconds=contract['max_seconds'], pipeline='v4', only=part['entries'],
                     ordered_entries=part['entries'], authorization_basis=contract['authorization_basis'],
                     runtime_from=prior, episode_spec=plan['spec'])
@@ -449,8 +456,9 @@ def job_state(root, batch, job_id, production, transport=None):
         live = {a['endpoint'] for a in transport.control('assignments')}
         if (state['endpoint'] not in live and len(history) == 1
                 and _released_uncollected(state_path, state, run, request)):
+            acceptance = 'not_submitted' if run['error']['code'] == 'provider_not_submitted' else 'unknown'
             return {'job_id': job_id, 'state': 'runtime_released_uncollected', 'request_id': request,
-                    'action': 'new_attempt_within_same_task', 'provider_acceptance': 'unknown',
+                    'action': 'new_attempt_within_same_task', 'provider_acceptance': acceptance,
                     'resource_sha256': file_sha(state_path), 'observed_at': time.time()}
         if state['endpoint'] in live:
             observed = transport.remote(state['remote_directory'], 'status', {'request_id': request})

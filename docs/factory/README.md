@@ -182,6 +182,6 @@ bash scripts/drama finish resume --batch <batch.json>
 
 ## 7. 发布、迁移与能力边界
 
-新任务绑定当前[执行清单](releases/factory-v21.json)和 SHA，使用本工作区的 `scripts/drama` 通道完成排产与准备。H3 参考素材容量由[运行清单](../h3/workflow-v4-g4-runtime.json)统一定义。5–9 张参考图在 G4 上的显存与耗时仍待实测。
+新任务绑定当前[执行清单](releases/factory-v22.json)和 SHA，使用本工作区的 `scripts/drama` 通道完成排产与准备。H3 参考素材容量由[运行清单](../h3/workflow-v4-g4-runtime.json)统一定义。5–9 张参考图在 G4 上的显存与耗时仍待实测。
 
 开始 H3 或增强任务前运行 `bash scripts/drama release verify`。新 H3 任务按当前专项技能指纹记录实际检查。已有任务继续用 `scripts/drama` 续做，工具按账本校验并调用任务锁定的执行包。 续做时需保留旧清单和对应的 `.local/factory-releases/` 快照。需要在原任务追加使用新版本的轮次时，按授权使用第 3 节的 `task upgrade-execution`，保留原任务与批次快照。

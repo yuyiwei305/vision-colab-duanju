@@ -11,7 +11,7 @@ from .core import ROOT, FactoryError, file_sha, read_json, write_json
 H3_RUNTIME = 'docs/h3/workflow-v4-g4-runtime.json'
 INFERENCE = ('scripts/h3_workflow_v4.py', 'scripts/h3_v4_nodes.py', 'scripts/h3_pika_nodes.py',
              H3_RUNTIME, 'docs/h3/pika-ref-v1-constraints.txt')
-PREVIOUS = 'factory-v20'
+PREVIOUS = 'factory-v21'
 ARCHIVE_COMPAT = 'scripts/drama_factory/archive_compat/sitecustomize.py'
 CONTROLLERS = ('scripts/colab_h3.py', 'scripts/colab_h3_remote.py', 'scripts/h3_episode.py',
                'scripts/h3_production.py', 'scripts/h3_continuity.py', 'scripts/h3_shot_contract.py',
@@ -27,7 +27,7 @@ CONTROLLERS = ('scripts/colab_h3.py', 'scripts/colab_h3_remote.py', 'scripts/h3_
                'ref/drama-skills/skills/short-drama-edit/scripts/edit_tool.py',
                'ref/drama-skills/skills/short-drama-produce/scripts/production_tool.py')
 
-ARCHIVED_RELEASES = tuple(f'factory-v{number}' for number in range(1, 21))
+ARCHIVED_RELEASES = tuple(f'factory-v{number}' for number in range(1, 22))
 ARCHIVE_DIRS = {'factory-v1': 'factory-v1-20261113', 'factory-v11': 'factory-v11-locked-production'}
 
 
