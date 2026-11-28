@@ -1328,7 +1328,7 @@ def _inputs_current(root: Path, job: Mapping[str, Any]) -> bool:
         return False
 
 
-def _load_adapter(config_path: Path, profile: str, root: Path) -> tuple[list[str], int, frozenset[str] | None]:
+def _load_adapter(config_path: Path, profile: str, root: Path) -> tuple[list[str], int | None, frozenset[str] | None]:
     resolved = config_path.expanduser().resolve()
     if resolved.is_relative_to(root):
         raise ValueError("adapter config must live outside the project")
@@ -1345,7 +1345,15 @@ def _load_adapter(config_path: Path, profile: str, root: Path) -> tuple[list[str
     if not command or any(not part for part in command):
         raise ValueError("adapter command must be a non-empty argv list")
     timeout = selected.get("timeout_seconds", 300)
-    if not isinstance(timeout, int) or isinstance(timeout, bool) or not 1 <= timeout <= MAX_TIMEOUT_SECONDS:
+    scripts = Path(__file__).resolve().parents[5] / "scripts"
+    script = Path(command[1]).resolve() if len(command) == 5 and command[2] == "adapter" else None
+    guarded_breeze = script == scripts / "breeze_tts_colab.py"
+    guarded_colab = script in {scripts / "colab_h3.py", scripts / "relay_vsr_comfy_colab.py"}
+    if guarded_breeze:
+        timeout = None  # Older voice batches already use the same CCU-guarded controller.
+    if not (timeout is None and (guarded_breeze or guarded_colab)) and (
+        not isinstance(timeout, int) or isinstance(timeout, bool) or not 1 <= timeout <= MAX_TIMEOUT_SECONDS
+    ):
         raise ValueError(f"adapter timeout must be 1-{MAX_TIMEOUT_SECONDS} seconds")
     roles = selected.get("reference_roles")
     declared = (
@@ -1456,7 +1464,7 @@ def _parse_public_adapter_error(
     return result
 
 
-def _run_adapter(command: list[str], timeout: int, payload: Mapping[str, Any], root: Path) -> dict[str, Any]:
+def _run_adapter(command: list[str], timeout: int | None, payload: Mapping[str, Any], root: Path) -> dict[str, Any]:
     with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
         try:
             completed = subprocess.run(

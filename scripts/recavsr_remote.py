@@ -113,7 +113,7 @@ def superscale(root, spec):
             "--disable-metadata", "--cache-classic", "--output-directory", str(output_dir),
         ], cwd=comfy, stdout=log, stderr=log)
         try:
-            for _ in range(100):
+            while time.time() < spec["deadline"]:
                 if server.poll() is not None:
                     raise RuntimeError("ComfyUI exited at startup; see comfy.log")
                 try:
@@ -125,7 +125,7 @@ def superscale(root, spec):
                     raise RuntimeError("ComfyUI did not load ReCaVSR; see comfy.log")
                 break
             else:
-                raise TimeoutError("ComfyUI startup timeout")
+                raise TimeoutError("CCU closeout reserve reached while starting ComfyUI")
 
             write(root / "status.json", {"state": "recavsr", "total": spec["frames"]})
             started = time.monotonic()

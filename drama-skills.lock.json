@@ -172,7 +172,7 @@
     "skills/short-drama-produce/references/providers/minimax-speech.md": "875fa5cc0e32f52c3e7edf8d0d7de18c24e100762e20d94620958939516cd8d6",
     "skills/short-drama-produce/references/providers/seedance.md": "cf1fc94bab4c3f7e4550ec100f2d396c985c4da18c8488a8d00d1af4406679be",
     "skills/short-drama-produce/scripts/fixture_adapter.py": "f3695da2aa5281b30991515d36863322f93f3d85de574cf30fe81664aec8a730",
-    "skills/short-drama-produce/scripts/production_tool.py": "1f9e8e1e4f460a68736bb142280563df8ccaa06d1d97bac6be5e9f83aa27e3d6",
+    "skills/short-drama-produce/scripts/production_tool.py": "ea8c57e78d50ae54c01c17cfe18b74bf32b154d0d60706e235f70a61e929eb56",
     "skills/short-drama-produce/scripts/provider_adapters.py": "9555f41da83e3666324dafedaf271a0205ed924bd956424c037e71419d7c067b",
     "skills/short-drama-produce/scripts/selftest.py": "d93f6717f3a347be3188d0619946002d1e49e86db5315fb550e7cd8c314bcac3",
     "skills/short-drama-review/SKILL.md": "fafe3b5274425360e57181b5a956b34929af7b4c454201df6b70b81a2a5562e0",

@@ -390,6 +390,8 @@ def validate_batch(batch, *, historical_collect=False):
     for key, cap in [('max_seconds', 28800 if episode else 3600),
                      ('max_ccu', 50 if episode else 15), ('max_rate', 15)]:
         value = batch.get(key)
+        if key == 'max_seconds' and value is None and batch.get('profile') == v4.PROFILE:
+            continue
         if type(value) not in (int, float) or not math.isfinite(value) or not 0 < value <= cap:
             raise H3Error('invalid_finite_batch')
     if (batch.get('schema_version') != 1 or not 1 <= len(jobs) <= (32 if episode else 5)
@@ -464,6 +466,8 @@ def task_spec(batch):
         raise H3Error('invalid_task_contract')
     for key, cap in [('max_ccu', 100), ('max_seconds', 28800)]:
         value = task.get(key)
+        if key == 'max_seconds' and value is None and task['schema_version'] == 2:
+            continue
         if type(value) not in (int, float) or not math.isfinite(value) or not 0 < value <= cap:
             raise H3Error('invalid_task_limits')
     return path, task
@@ -575,6 +579,9 @@ def task_accounting(batch, *, now=None, reserve=0):
     now = time.time() if now is None else now
     estimated, active_rate, active = 0.0, 0.0, 0
     single_lane = task['schema_version'] == 2 and task['max_instances'] == 1
+    ccu_only = accounting['deadline'] is None
+    if ccu_only and task['schema_version'] != 2:
+        raise H3Error('ccu_only_requires_factory_task')
     leases = []
     settled_endpoints = {}
     for member in members:
@@ -582,8 +589,20 @@ def task_accounting(batch, *, now=None, reserve=0):
         if not file.exists(): continue
         state = read_json(file)
         end = state.get('finished_at', now) if state['state'] in ('released', 'transferred') else now
-        settled = _settled_lease_charge(state) if single_lane else None
-        cost = member['max_rate'] * max(0, end - state['started_at']) / 3600
+        settlement = accounting.get('late_usage_after', {}).get(str(file))
+        settled_state = {**state, 'usage_after': settlement['usage']} if (
+            settlement and state['state'] == 'released' and digest(file) == settlement['resource_sha256']) else state
+        settled = _settled_lease_charge(settled_state) if single_lane else None
+        started = state['started_at']
+        if state.get('ccu_only'):
+            placement = state.get('paid_started_at')
+            if placement is None:
+                placement = colab_allocation.possible_assignment_at(file)
+            if placement is not None:
+                started = max(started, placement)
+            elif not state.get('endpoint'):
+                started = end
+        cost = member['max_rate'] * max(0, end - started) / 3600
         estimated += settled if settled is not None else cost
         if settled is not None and state.get('endpoint'):
             settled_endpoints[state['endpoint']] = state
@@ -611,7 +630,7 @@ def task_accounting(batch, *, now=None, reserve=0):
             if settled is not None:
                 estimated += settled - sum(cost for _, _, _, cost in group)
     if (active > task['max_instances']
-            or now + reserve >= accounting['deadline']
+            or (not ccu_only and now + reserve >= accounting['deadline'])
             or estimated + active_rate * reserve / 3600 >= task['max_ccu']):
         raise H3Error('task_budget_or_deadline_exhausted')
     return {'spent_ccu_upper_estimate': estimated, 'deadline': accounting['deadline'],
@@ -655,37 +674,61 @@ def prepare_task_runtime(batch, transport, production, *, previous=None):
                             or production._read_run_history(Path(task['project']), job_id)
                             or receipt.get('fingerprint') != job['fingerprint'] or receipt.get('consumed_at')):
                         raise H3Error('all_task_inputs_must_be_registered_before_allocation')
+            seconds = task['max_seconds']
             write_json(accounting_path, {'task_sha256': digest(path),
-                                        'started_at': now, 'deadline': now + task['max_seconds'],
+                                        'started_at': now, 'deadline': None if seconds is None else now + seconds,
                                         'usage_before': usage}, exclusive=True)
         accounting = read_json(accounting_path)
+        ccu_only = accounting['deadline'] is None
+        if ccu_only:
+            if previous and previous.get('endpoint'):
+                raise H3Error('released_paid_lease_requires_new_wave')
+            # The provider may settle after the release check. Use the next idle
+            # bookend for the most recent lease, before sending another allocation.
+            for member in reversed(members):
+                file = Path(member['resource_state'])
+                if not file.exists():
+                    continue
+                last = read_json(file)
+                if (_settled_lease_charge(last) is None
+                        and _settled_lease_charge({**last, 'usage_after': usage}) is not None):
+                    accounting.setdefault('late_usage_after', {}).setdefault(
+                        str(file), {'resource_sha256': digest(file), 'usage': usage, 'observed_at': now})
+                    write_json(accounting_path, accounting)
+                break
         wave = batch.get('wave')
         isolated_wave = (wave is not None and active == 0
                          and sum(member.get('wave') == wave for member in members) == 1)
         single_lane = (task['schema_version'] == 2 and (task['max_instances'] == 1 or isolated_wave)
                        and (previous is None or previous.get('closeout_reserve_seconds') == 240))
-        reserve = 240 if single_lane else 900
+        reserve = 240 if single_lane or ccu_only else 900
         budget = task_accounting(batch, now=now, reserve=reserve)
         remaining = task['max_ccu'] - budget['spent_ccu_upper_estimate']
         if usage['balance'] < remaining:
             raise H3Error('insufficient_balance')
-        deadline = min(now + batch['max_seconds'], now + batch['max_ccu'] / batch['max_rate'] * 3600,
-                       accounting['deadline']) - 30
-        if single_lane:
+        deadline = None if ccu_only else min(
+            now + batch['max_seconds'], now + batch['max_ccu'] / batch['max_rate'] * 3600,
+            accounting['deadline']) - 30
+        if single_lane and not ccu_only:
             # Hard release runs independently of the notebook. Leave time for provider unassignment.
             deadline = min(deadline, now + remaining / batch['max_rate'] * 3600 - 120)
             if deadline <= now + reserve:
                 raise H3Error('task_budget_or_deadline_exhausted')
+        lease_ccu = remaining / (1 if isolated_wave else task['max_instances'])
+        if ccu_only and lease_ccu * 3600 / batch['max_rate'] <= reserve + 120:
+            raise H3Error('task_budget_or_deadline_exhausted')
         state = {'state': 'allocating', 'started_at': now, 'usage_before': usage,
                  'baseline_endpoints': sorted(a['endpoint'] for a in transport.control('assignments')),
                  'deadline': deadline,
                  'remote_directory': '/content/vision-h3-' + batch['batch_id']}
-        if single_lane:
+        if single_lane or ccu_only:
             state['closeout_reserve_seconds'] = reserve
+        if ccu_only:
+            state.update(ccu_only=True, ccu_remaining_at_reservation=lease_ccu, controller_pid=os.getpid())
         if previous:
             # A known released allocation may be replaced, without resetting either budget or deadline.
             state.update(started_at=previous['started_at'], usage_before=previous['usage_before'],
-                         deadline=min(deadline, previous['deadline']),
+                         deadline=None if ccu_only else min(deadline, previous['deadline']),
                          previous_allocations=[*previous.get('previous_allocations', []),
                              {k: previous[k] for k in ('endpoint', 'finished_at', 'failure') if k in previous}])
         write_json(batch['resource_state'], state, exclusive=previous is None)
@@ -696,12 +739,20 @@ def ensure_budget(batch, start, usage=None, *, now=None, reserve=600):
     now = time.time() if now is None else now
     elapsed = max(0, now - start['started_at'])
     if batch.get('task_budget'):
-        if start.get('closeout_reserve_seconds') and now + reserve >= start['deadline']:
+        deadline = start['deadline']
+        if start.get('closeout_reserve_seconds') and deadline is not None and now + reserve >= deadline:
             raise H3Error('task_budget_or_deadline_exhausted')
         task_accounting(batch, now=now, reserve=reserve)
+        if start.get('ccu_only'):
+            return
         # The provider reports account-wide usage. Charge only this task's leases.
         rate = batch['max_rate']
         cost = rate * elapsed / 3600
+    elif start.get('ccu_only'):
+        deadline = colab_allocation.paid_deadline(batch['resource_state'], start, batch['max_rate'])
+        if deadline is not None and now + reserve >= deadline:
+            raise H3Error('budget_or_deadline_exhausted')
+        return
     else:
         rate = usage['rate'] or batch['max_rate']  # API updates can lag allocation.
         cost = max(0, start['usage_before']['balance'] - usage['balance'],
@@ -843,6 +894,11 @@ def run_adapter(job, batch, transport):
     while time.time() < run['deadline'] - 90:
         status = transport.remote(remote, 'status', {'request_id': request_id})
         if status['state'] == 'succeeded':
+            if run.get('ccu_only') and run.get('progress_job') == job['job_id']:
+                current = read_json(batch['resource_state'])
+                if current['state'] in ('ready', 'paused_recoverable'):
+                    current['progress_phase'] = 'collecting'
+                    write_json(batch['resource_state'], current)
             cache = Path(batch['resource_state']).parent / 'results'
             cache.mkdir(mode=0o700, exist_ok=True)
             files = status.get('files', [status])
@@ -967,7 +1023,9 @@ def inherit_runtime(batch, transport):
             or parent['project'] != batch['project'] or parent['session'] != batch['session']
             or parent['setup_sha256'] != batch['setup_sha256']
             or parent['implementation_sha256'] != batch['implementation_sha256']
-            or batch['max_ccu'] > parent['max_ccu'] or batch['max_seconds'] > parent['max_seconds']):
+            or batch['max_ccu'] > parent['max_ccu']
+            or (parent['max_seconds'] is not None and (
+                batch['max_seconds'] is None or batch['max_seconds'] > parent['max_seconds']))):
         raise H3Error('runtime_ownership_or_contract_mismatch')
     previous = read_json(parent['resource_state'])
     if previous['state'] != 'paused_recoverable': raise H3Error('only_paused_owned_runtime_can_transfer')
@@ -1032,6 +1090,9 @@ def run_batch(batch, transport, production, *, resume=False):
         state = prepare_task_runtime(batch, transport, production, previous=previous)
     elif allocating:
         state = previous
+        if state.get('ccu_only'):
+            state['controller_pid'] = os.getpid()
+            write_json(state_path, state)
     elif resume:
         state = read_json(state_path)
         if state['state'] not in ('paused_recoverable', 'ready'):
@@ -1051,13 +1112,20 @@ def run_batch(batch, transport, production, *, resume=False):
         if assignments or usage['count'] or usage['rate']:
             raise H3Error('first_validation_requires_idle_account')
         started = time.time()
-        deadline = started + min(batch['max_seconds'], batch['max_ccu'] / batch['max_rate'] * 3600) - 30
+        ccu_only = batch['max_seconds'] is None
+        deadline = None if ccu_only else started + min(
+            batch['max_seconds'], batch['max_ccu'] / batch['max_rate'] * 3600) - 30
         state = {'state': 'allocating', 'started_at': started, 'usage_before': usage,
                  'baseline_endpoints': [a['endpoint'] for a in assignments], 'deadline': deadline,
                  'remote_directory': '/content/vision-h3-' + batch['batch_id']}
+        if ccu_only:
+            if batch['max_ccu'] * 3600 / batch['max_rate'] <= 360:
+                raise H3Error('budget_or_deadline_exhausted')
+            state.update(ccu_only=True, ccu_remaining_at_reservation=batch['max_ccu'],
+                         controller_pid=os.getpid(), closeout_reserve_seconds=240)
         write_json(state_path, state, exclusive=True)
     # Independent local supervisor survives parent death; it never allocates.
-    guard = None if resume and not allocation_retry else subprocess.Popen(
+    guard = None if resume and not (allocation_retry or (allocating and state.get('ccu_only'))) else subprocess.Popen(
         [sys.executable, str(SELF), 'guard', '--batch', batch['batch_file']],
         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL, start_new_session=True)
@@ -1067,18 +1135,26 @@ def run_batch(batch, transport, production, *, resume=False):
         closeout = state.get('closeout_reserve_seconds', 600)
         submit_reserve = state.get('closeout_reserve_seconds', 900)
         if not reused:
-            gate = task_allocation_lock(batch) if batch.get('task_budget') else contextlib.nullcontext()
+            ccu_only = state.get('ccu_only')
+            # The single-instance reservation already owns the slot. Keep stop
+            # and reconciliation available while waiting across free windows.
+            gate = task_allocation_lock(batch) if batch.get('task_budget') and not ccu_only else contextlib.nullcontext()
             with gate:
                 if batch.get('task_budget'):
                     check_runtime_budget(batch, state, transport, reserve=submit_reserve)
                 state['endpoint'] = colab_allocation.allocate(
-                    transport, state_path, batch['gpu'], state['deadline'] - submit_reserve,
+                    transport, state_path, batch['gpu'], math.inf if ccu_only else state['deadline'] - submit_reserve,
                     max_wait=_cli_timeout('COLAB_ALLOC_TIMEOUT', colab_allocation.MAX_WAIT),
                     previous_endpoint=previous.get('endpoint') if allocation_retry else None,
                     check_budget=lambda: check_runtime_budget(batch, state, transport, reserve=submit_reserve))
-                if read_json(state_path)['state'] != 'allocating':
-                    raise H3Error('colab_allocation_stopped')
-                write_json(state_path, state)
+                commit = task_allocation_lock(batch) if ccu_only and batch.get('task_budget') else contextlib.nullcontext()
+                with commit:
+                    if read_json(state_path)['state'] != 'allocating':
+                        raise H3Error('colab_allocation_stopped')
+                    if ccu_only:
+                        colab_allocation.claim_paid_lease(state_path, state, batch['max_rate'])
+                    state['progress_phase'] = 'bootstrapping'
+                    write_json(state_path, state)
                 check_runtime_budget(batch, state, transport, reserve=submit_reserve)
             remote = state['remote_directory']
             transport.execute(f'import os,json\nos.makedirs({remote!r},exist_ok=True)\nprint({MARKER!r}+"{{}}")')
@@ -1113,6 +1189,8 @@ def run_batch(batch, transport, production, *, resume=False):
             if job_id in completed_jobs(root, batch, production): continue
             history = production._read_run_history(root, job_id)
             check_runtime_budget(batch, state, transport, reserve=0 if history else submit_reserve)
+            state.update(progress_phase='collecting' if history else 'generating', progress_job=job_id)
+            write_json(state_path, state)
             print(json.dumps({'phase': 'generating', 'job_id': job_id}), flush=True)
             if history:
                 if resume and batch.get('execution_release'):
@@ -1123,6 +1201,7 @@ def run_batch(batch, transport, production, *, resume=False):
             results.append(result)
             state['completed_jobs'] = completed_jobs(root, batch, production)
             state['last_collected_at'] = time.time()
+            state.pop('progress_job', None)
             write_json(state_path, state)
             print(json.dumps({'phase': 'collected', 'job_id': job_id}), flush=True)
     except BaseException as exc:
@@ -1179,12 +1258,15 @@ def run_batch(batch, transport, production, *, resume=False):
 def guard_batch(batch):
     state = read_json(batch['resource_state'])
     transport = Colab(batch['session'], timeout=15 if state.get('closeout_reserve_seconds') else None)
-    deadline = state['deadline']
     heartbeat = budget_heartbeat = 0
-    while time.time() < deadline:
-        time.sleep(min(5, max(0, deadline - time.time())))
+    while True:
         state = read_json(batch['resource_state'])
         if state['state'] in ('released', 'transferred'): return
+        deadline = colab_allocation.paid_deadline(batch['resource_state'], state, batch['max_rate'])
+        if deadline is not None and time.time() >= deadline:
+            break
+        if colab_allocation.free_wait_orphaned(state):
+            break
         if batch.get('task_budget') and time.time() - budget_heartbeat >= 30:
             try:
                 check_runtime_budget(batch, state, transport, reserve=0)
@@ -1201,6 +1283,7 @@ def guard_batch(batch):
             try: transport.remote(state['remote_directory'], 'boot')
             except H3Error: pass
             heartbeat = time.time()
+        time.sleep(5 if deadline is None else min(5, max(0, deadline - time.time())))
     release_batch(batch, transport, state)
 
 
@@ -1349,8 +1432,12 @@ def main():
     transport = Colab(batch['session'])
     if args.command == 'register': result = register_batch(batch)
     elif args.command in ('run', 'resume'):
+        from drama_factory.progress import resource_snapshot, watch
         lock_path = Path(args.batch).with_suffix('.lock')
-        with lock_path.open('a') as f:
+        reporter = contextlib.nullcontext() if batch.get('task_budget') else watch(
+            f"{Path(batch['project']).name} · {batch['batch_id']}", lock_path.parent,
+            lambda: [resource_snapshot(batch['resource_state'], len(batch['jobs']))])
+        with lock_path.open('a') as f, reporter:
             fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
             result = run_batch(batch, transport, engine(), resume=args.command == 'resume')
     elif args.command == 'adapter': result = run_adapter(json.load(sys.stdin.buffer), batch, transport)

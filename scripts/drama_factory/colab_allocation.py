@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import contextlib
 import fcntl
+import math
 import os
 from pathlib import Path
 import time
@@ -36,11 +37,15 @@ def record(journal, request, operation, reply, started):
     write_json(journal, request)
 
 
-def _lookup(transport, resource, journal, request):
+def _lookup(transport, resource, journal, request, *, waiting=False):
     started = time.time()
     reply = transport.allocation_request(
         'lookup', request['gpu'], request['request_id'], started + HTTP_TIMEOUT, resource)
+    if waiting and reply.get('status') == 412 and reply['state'] == 'rejected':
+        reply = {**reply, 'state': 'retry', 'reason': 'capacity_or_assignment_limit'}
     record(journal, request, 'lookup', reply, started)
+    if waiting and reply['state'] == 'retry':
+        return reply
     if reply['state'] not in ('assigned', 'unassigned'):
         raise FactoryError('colab_allocation_lookup_unverified')
     return reply
@@ -65,6 +70,47 @@ def recover(transport, resource):
         if request.get('request_id'):
             _lookup(transport, resource, journal, request)
         return request.get('endpoint')
+
+
+def possible_assignment_at(resource):
+    """Read the earliest possible paid time for the current request, including an uncertain POST."""
+    journal = Path(resource).with_name('allocation-request.json')
+    clock = journal.with_name('allocation-clock.json')
+    if journal.is_file() and clock.is_file():
+        request, placement = read_json(journal), read_json(clock)
+        if request.get('request_id') == placement['request_id']:
+            return placement['possible_assignment_at']
+    return None
+
+
+def _deadline_for_paid_time(started, state, max_rate):
+    return started + state['ccu_remaining_at_reservation'] * 3600 / max_rate - 120
+
+
+def paid_deadline(resource, state, max_rate):
+    """Use the paid clock even if the main controller lost the placement response."""
+    if state['deadline'] is not None or not state.get('ccu_only'):
+        return state['deadline']
+    started = possible_assignment_at(resource)
+    if started is not None:
+        return _deadline_for_paid_time(started, state, max_rate)
+    return None
+
+
+def claim_paid_lease(resource, state, max_rate):
+    started = possible_assignment_at(resource)
+    if started is None:
+        raise FactoryError('ccu_only_assignment_clock_missing')
+    state.update(paid_started_at=started, deadline=_deadline_for_paid_time(started, state, max_rate))
+
+
+def free_wait_orphaned(state):
+    if state.get('ccu_only') and state['deadline'] is None and state['state'] == 'allocating':
+        try:
+            os.kill(state['controller_pid'], 0)
+        except ProcessLookupError:
+            return True
+    return False
 
 
 def carry_expired_request(transport, resource, target_resource, *, target_session, gpu):
@@ -92,6 +138,7 @@ def carry_expired_request(transport, resource, target_resource, *, target_sessio
 
 def allocate(transport, resource, gpu, use_by, *, max_wait=MAX_WAIT, previous_endpoint=None,
              check_budget=None):
+    waiting = math.isinf(use_by)
     def start_window(journal, history):
         request = {'request_id': str(uuid.uuid4()), 'session': transport.session,
                    'gpu': gpu, 'deadline': min(use_by, time.time() + min(MAX_WAIT, max_wait)),
@@ -121,7 +168,7 @@ def allocate(transport, resource, gpu, use_by, *, max_wait=MAX_WAIT, previous_en
             deadline = min(use_by, request['deadline'])
             if time.time() >= deadline:
                 had_endpoint = bool(request.get('endpoint'))
-                reply = _lookup(transport, resource, journal, request)
+                reply = _lookup(transport, resource, journal, request, waiting=waiting)
                 if read_json(resource)['state'] != 'allocating':
                     raise FactoryError('colab_allocation_stopped')
                 if time.time() >= use_by:
@@ -130,26 +177,33 @@ def allocate(transport, resource, gpu, use_by, *, max_wait=MAX_WAIT, previous_en
                     check_budget()
                 if reply['state'] == 'assigned':
                     return reply['endpoint']
-                if had_endpoint:
+                if reply['state'] == 'retry':
+                    # Keep the original request until an authenticated lookup is conclusive.
+                    deadline = time.time() + 20
+                elif had_endpoint:
                     raise FactoryError('colab_original_allocation_unavailable')
-                start_window(journal, _history(request))
-                continue
-            if check_budget:
-                check_budget()
-            operation = 'lookup' if request.get('endpoint') else 'attempt'
-            started = time.time()
-            reply = transport.allocation_request(operation, gpu, request['request_id'], deadline, resource)
-            record(journal, request, operation, reply, started)
-            if reply['state'] == 'assigned':
-                if read_json(resource)['state'] != 'allocating':
-                    raise FactoryError('colab_allocation_stopped')
-                if time.time() >= use_by:
-                    raise FactoryError('colab_allocation_deadline')
-                return reply['endpoint']
-            if reply['state'] == 'unassigned':
-                raise FactoryError('colab_original_allocation_unavailable')
-            if reply['state'] == 'rejected':
-                continue
+                else:
+                    start_window(journal, _history(request))
+                    continue
+            else:
+                if check_budget:
+                    check_budget()
+                operation = 'lookup' if request.get('endpoint') else 'attempt'
+                started = time.time()
+                reply = transport.allocation_request(operation, gpu, request['request_id'], deadline, resource)
+                if waiting and reply.get('status') == 412 and reply['state'] == 'rejected':
+                    reply = {**reply, 'state': 'retry', 'reason': 'capacity_or_assignment_limit'}
+                record(journal, request, operation, reply, started)
+                if reply['state'] == 'assigned':
+                    if read_json(resource)['state'] != 'allocating':
+                        raise FactoryError('colab_allocation_stopped')
+                    if time.time() >= use_by:
+                        raise FactoryError('colab_allocation_deadline')
+                    return reply['endpoint']
+                if reply['state'] == 'unassigned':
+                    raise FactoryError('colab_original_allocation_unavailable')
+                if reply['state'] == 'rejected':
+                    continue
         delay = min(20, 5 * 2 ** min(max(0, request['attempts'] - 1), 2))
         time.sleep(min(delay, max(0, deadline - time.time())))
 
@@ -180,12 +234,20 @@ def _request_once(client_state, operation, session, gpu, request_id, deadline, r
         _set_http_timeout(deadline)
         result = client._get_assignment(*args)
         if not isinstance(result, Assignment):
+            state = read_json(resource)
+            clock = Path(resource).with_name('allocation-clock.json')
+            if state.get('ccu_only'):
+                # A successful GET proves this request has no earlier placement.
+                write_json(clock, {'request_id': request_id, 'possible_assignment_at': None})
             if operation == 'lookup':
                 return {'state': 'unassigned'}
             if time.time() >= deadline:
                 return {'state': 'retry', 'reason': 'deadline'}
-            if read_json(resource)['state'] != 'allocating':
+            if state['state'] != 'allocating':
                 return {'state': 'retry', 'reason': 'stopped'}
+            if state.get('ccu_only'):
+                # Persist before POST so a lost response or controller can still be bounded.
+                write_json(clock, {'request_id': request_id, 'possible_assignment_at': time.time()})
             _set_http_timeout(deadline)
             result = client._post_assignment(args[0], result.token, *args[1:])
     except ColabRequestError as exc:

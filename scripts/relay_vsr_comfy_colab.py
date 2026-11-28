@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import shlex
 import shutil
@@ -14,6 +15,8 @@ import time
 import colab_h3 as h
 import relay_vsr_colab as relay
 from drama_factory import finishing
+from drama_factory.colab_allocation import claim_paid_lease, free_wait_orphaned, paid_deadline
+from drama_factory.progress import resource_snapshot, watch
 
 SELF = Path(__file__).resolve()
 WORKER = SELF.with_name("relay_vsr_comfy_remote.py")
@@ -251,13 +254,32 @@ def stage_and_start(c, remote, source, batch, spec, state_file, state, rife_work
     stage_input(c, batch, finishing.WORKER if recavsr else WORKER, remote + "/worker.py")
     if rife_worker:
         c.upload(rife_worker, remote + "/relay_vsr_colab_remote.py")
-    reserve = min(480, (state['deadline'] - state['started_at']) * 0.15) if recavsr else 480
+    paid_start = state.get('paid_started_at', state['started_at'])
+    reserve = min(480, (state['deadline'] - paid_start) * 0.15) if recavsr else 480
     runtime = json.dumps({**spec, "deadline": state["deadline"] - reserve})
     relay.execute(c, f"import json\nfrom pathlib import Path\nPath({remote+'/runtime.json'!r}).write_text({runtime!r})\nresult={{}}")
     state.update(state="running", worker_started=True, active_artifacts_preserved=False)
     h.write_json(state_file, state)
     state["worker_pid"] = remote_launch(c, remote)["pid"]
     h.write_json(state_file, state)
+
+
+def start_guard(batch):
+    subprocess.Popen([sys.executable, str(SELF), 'guard', '--batch', batch['batch_file']],
+                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                     start_new_session=True)
+
+
+def allocate_and_record(c, batch, state):
+    endpoint = relay.allocate(c, batch)
+    file = resource(batch)
+    if h.read_json(file)['state'] != 'allocating':
+        raise RuntimeError('colab_allocation_stopped')
+    if state.get('ccu_only'):
+        claim_paid_lease(file, state, batch['max_rate'])
+    state.update(state='uploading', endpoint=endpoint)
+    h.write_json(file, state)
+
 
 def adapter(job, batch):
     if batch.get('execution_release') and not job.get('collect_provider_job_id'):
@@ -299,18 +321,20 @@ def adapter(job, batch):
         if usage["balance"] < batch["max_ccu"]:
             raise RuntimeError("insufficient Colab balance")
         start = time.time()
-        deadline = start + min(batch["max_seconds"], batch["max_ccu"] / batch["max_rate"] * 3600)
+        ccu_only = batch['max_seconds'] is None
+        if ccu_only and batch['max_ccu'] * 3600 / batch['max_rate'] <= 240:
+            raise RuntimeError('finishing_budget_below_closeout_reserve')
+        deadline = None if ccu_only else start + min(
+            batch["max_seconds"], batch["max_ccu"] / batch["max_rate"] * 3600)
         state = {"state": "allocating", "deadline": deadline, "started_at": start,
                  "active_directory": remote, "active_job": job["job_id"], "usage_before": usage,
                  "prior_assignments": len(assignments)}
+        if ccu_only:
+            state.update(ccu_only=True, ccu_remaining_at_reservation=batch['max_ccu'], controller_pid=os.getpid())
         h.write_json(state_file, state, exclusive=True)
         h.write_json(job["handle_path"], {"provider_job_id": key}, exclusive=True)
-        subprocess.Popen([sys.executable, str(SELF), "guard", "--batch", batch["batch_file"]],
-                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                         start_new_session=True)
-        endpoint = relay.allocate(c, batch)
-        state.update(state="uploading", endpoint=endpoint)
-        h.write_json(state_file, state)
+        start_guard(batch)
+        allocate_and_record(c, batch, state)
         stage_and_start(c, remote, source, batch, spec, state_file, state, rife_worker, master)
     else:
         if job["collect_provider_job_id"] != key:
@@ -320,14 +344,14 @@ def adapter(job, batch):
             relay.release(batch)
             raise RuntimeError('finishing_allocation_reconciled_no_submission')
         if state['state'] == 'allocating':
-            endpoint = relay.allocate(c, batch)
-            state.update(state='uploading', endpoint=endpoint)
-            h.write_json(state_file, state)
+            if state.get('ccu_only'):
+                state['controller_pid'] = os.getpid()
+                h.write_json(state_file, state)
+                start_guard(batch)
+            allocate_and_record(c, batch, state)
         if state['state'] == 'released' and batch.get('execution_release'):
             from drama_factory.finishing import resume_allocation
-            state = resume_allocation(batch, state, c, spec, existing_master=master)
-            subprocess.Popen([sys.executable, str(SELF), 'guard', '--batch', batch['batch_file']],
-                stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+            state = resume_allocation(batch, state, c, spec, existing_master=master, start_guard=start_guard)
         if state["state"] == "uploading" and not state.get("worker_started"):
             stage_and_start(c, remote, source, batch, spec, state_file, state, rife_worker, master)
         elif state.get('worker_started') and not state.get('worker_pid'):
@@ -349,6 +373,8 @@ def adapter(job, batch):
     else:
         raise TimeoutError("remote compute did not finish before collection deadline")
 
+    state.update(progress_phase='collecting')
+    h.write_json(state_file, state)
     receipt = remote_status(c, batch, remote, "receipt.json")
     h.write_json(directory / "receipt.json", receipt)
     durable_root = Path(batch["durable_root"])
@@ -382,7 +408,8 @@ def adapter(job, batch):
         checks['audio_pcm'] = "identical" if spec.get('has_audio', True) else 'no_source_audio'
     h.write_json(directory / "verification.json", checks)
     state = h.read_json(state_file)
-    state.update(state="verified", preserved=preserved, active_artifacts_preserved=True)
+    state.update(state="verified", preserved=preserved, active_artifacts_preserved=True,
+                 completed_jobs=[job['job_id']])
     h.write_json(state_file, state)
     for name in ("worker.log", "comfy.log"):
         try:
@@ -454,7 +481,8 @@ def guard(batch):
         state = h.read_json(resource(batch))
         if state["state"] == "released":
             return state
-        if time.time() >= state["deadline"]:
+        deadline = paid_deadline(resource(batch), state, batch.get('max_rate'))
+        if free_wait_orphaned(state) or (deadline is not None and time.time() >= deadline):
             break
         time.sleep(3)
     error = None
@@ -568,7 +596,10 @@ def main():
         if args.command == "adapter":
             result = adapter(json.load(sys.stdin), batch)
         elif args.command in {"run", "resume"}:
-            result = run(batch, resume=args.command == "resume")
+            file = resource(batch)
+            with watch(f"{Path(batch['project']).name} · {batch['job_id']}", file.parent,
+                       lambda: [resource_snapshot(file, 1, engine_progress=file.with_name('progress.json'))]):
+                result = run(batch, resume=args.command == "resume")
         elif args.command == "release":
             result = recover_and_release(batch)
         elif args.command == "guard":

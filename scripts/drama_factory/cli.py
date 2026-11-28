@@ -51,11 +51,13 @@ def parser():
             reuse.add_argument('--retry-allocation', action='store_true')
         if name == 'create':
             p.add_argument('--authorization', required=True); p.add_argument('--max-ccu', required=True, type=float)
-            p.add_argument('--max-seconds', required=True, type=int)
+            p.add_argument('--max-seconds', type=int, help=argparse.SUPPRESS)
         if name in ('prepare', 'stop'): p.add_argument('--reason', required=True)
         if name == 'extend':
             p.add_argument('--authorization', required=True); p.add_argument('--max-ccu', required=True, type=float)
-            p.add_argument('--additional-seconds', required=True, type=int)
+            amendment = p.add_mutually_exclusive_group()
+            amendment.add_argument('--additional-seconds', type=int)
+            amendment.add_argument('--ccu-only', action='store_true')
             p.add_argument('--from-now', action='store_true', help='Start the approved interval now after an expired deadline.')
         if name == 'upgrade-execution': p.add_argument('--authorization', required=True)
     document = groups.add_parser('document').add_subparsers(dest='command', required=True)
@@ -103,7 +105,7 @@ def parser():
     p.add_argument('--short-edge', default=2160, type=int, help='Target short edge in pixels, default 2160')
     p.add_argument('--fps', default=60, type=int); p.add_argument('--cuts', type=Path, required=True)
     p.add_argument('--cuts-evidence', required=True); p.add_argument('--authorization', required=True)
-    p.add_argument('--max-ccu', required=True, type=float); p.add_argument('--max-seconds', required=True, type=int)
+    p.add_argument('--max-ccu', required=True, type=float); p.add_argument('--max-seconds', type=int, help=argparse.SUPPRESS)
     p.add_argument('--rife-zip', type=Path)
     p.add_argument('--master', help='Reuse a verified ReCaVSR master with matching source and frame clock')
     for name in ('run', 'resume', 'status', 'release'):
@@ -162,7 +164,7 @@ def execute(a):
         if command == 'impact': return planning.impact(core.read_json(a.before), core.read_json(a.after))
     if group == 'task':
         if command == 'create': return runtime.create(a.project, a.id, core.read_json(a.plan), authorization=a.authorization,
-                                                       max_ccu=a.max_ccu, max_seconds=a.max_seconds)
+                                                       max_ccu=a.max_ccu)
         if command == 'prepare':
             return runtime.append_wave(a.project, a.id, core.read_json(a.plan), reason=a.reason,
                                        retain_runtime=a.retain_runtime, reuse_runtime=a.reuse_runtime,
@@ -171,7 +173,8 @@ def execute(a):
         if command in ('status', 'reconcile'): return runtime.reconcile(a.project, a.id, online=command == 'reconcile')
         if command == 'stop': return runtime.stop(a.project, a.id, reason=a.reason)
         if command == 'extend': return runtime.extend(a.project, a.id, max_ccu=a.max_ccu,
-            additional_seconds=a.additional_seconds, authorization=a.authorization, from_now=a.from_now)
+            additional_seconds=a.additional_seconds, authorization=a.authorization, from_now=a.from_now,
+            ccu_only=a.ccu_only or a.additional_seconds is None)
         if command == 'upgrade-execution':
             return runtime.upgrade_execution(a.project, a.id, authorization=a.authorization)
     if group == 'document':
@@ -203,7 +206,7 @@ def execute(a):
         return delivery.verify_file(a.project, a.episode, a.path, source_audio=a.source_audio)
     if group == 'finish':
         if command == 'prepare': return finishing.prepare(a.project, a.episode, a.id, source=a.source, target_fps=a.fps,
-            cuts=core.read_json(a.cuts), authorization=a.authorization, max_ccu=a.max_ccu, max_seconds=a.max_seconds,
+            cuts=core.read_json(a.cuts), authorization=a.authorization, max_ccu=a.max_ccu,
             cuts_evidence=a.cuts_evidence, short_edge=a.short_edge, rife_zip=a.rife_zip, master=a.master)
         batch = core.read_json(a.batch)
         release = batch.get('execution_release')

@@ -20,6 +20,7 @@ from . import RELEASE
 from .core import (LEDGER, ROOT, FactoryError, file_sha, fingerprint, project,
                    project_path, read_json, write_json)
 from .planning import validate_plan
+from .progress import resource_snapshot, watch
 
 
 # One ordered list defines accepted upgrades and the next supported target.
@@ -42,6 +43,7 @@ EXECUTION_UPGRADES = (
     ('factory-v21', 'execution-upgrade-factory-v21.json', ('factory-v20',)),
     ('factory-v22', 'execution-upgrade-factory-v22.json', ('factory-v21',)),
     ('factory-v23', 'execution-upgrade-factory-v23.json', ('factory-v22',)),
+    ('factory-v24', 'execution-upgrade-factory-v24.json', ('factory-v23',)),
 )
 
 
@@ -80,12 +82,12 @@ def membership(path):
 
 def _limits(max_ccu, max_seconds, max_instances):
     if (type(max_ccu) not in (int, float) or not math.isfinite(max_ccu) or not 0 < max_ccu <= 100
-            or type(max_seconds) is not int or not 0 < max_seconds <= 28800
+            or (max_seconds is not None and (type(max_seconds) is not int or not 0 < max_seconds <= 28800))
             or type(max_instances) is not int or not 1 <= max_instances <= 2):
         raise FactoryError('invalid_task_budget_or_instance_limit')
 
 
-def create(root, task_id, plan, *, authorization, max_ccu, max_seconds, max_instances=None):
+def create(root, task_id, plan, *, authorization, max_ccu, max_seconds=None, max_instances=None):
     root = project(root)
     validate_plan(root, plan)
     if plan['release'] != RELEASE:
@@ -372,7 +374,8 @@ def append_wave(root, task_id, plan, *, reason, retain_runtime=False, reuse_runt
                 h3_episode.prepare(root, plan['episode'], batch_id, max_ccu=max_ccu,
                     max_seconds=contract['max_seconds'], pipeline='v4', only=part['entries'],
                     ordered_entries=part['entries'], authorization_basis=contract['authorization_basis'],
-                    runtime_from=prior, episode_spec=plan['spec'])
+                    runtime_from=prior, episode_spec=plan['spec'],
+                    ccu_only=accounting.get('deadline', contract['max_seconds']) is None)
             batch = read_json(filename)
             if batch.get('runtime_from') != prior:
                 raise FactoryError('prepared_wave_runtime_changed')
@@ -592,7 +595,15 @@ def run(root, task_id, *, resume=False):
                 if result.returncode or len(done) != len(batch['jobs']):
                     break
             return results
-        with ThreadPoolExecutor(max_workers=read_json(path)['max_instances']) as pool:
+        current = [batch for batch in batches if batch['wave'] == latest]
+        def snapshots():
+            rows = []
+            for batch in current:
+                row = resource_snapshot(batch['resource_state'], len(batch['jobs']))
+                rows.append({'batch': batch['batch_id'], **row})
+            return rows
+        with (watch(f'{root.name} · {task_id}', path.parent, snapshots),
+              ThreadPoolExecutor(max_workers=read_json(path)['max_instances']) as pool):
             results = list(pool.map(execute_lane, lanes.values()))
         return {'task': task_id, 'lanes': results, 'collected_before_revalidation': recovered,
                 'status': reconcile(root, task_id)}
@@ -614,34 +625,40 @@ def stop(root, task_id, *, reason):
     return {'state': 'stopped', 'released': released}
 
 
-def extend(root, task_id, *, max_ccu, additional_seconds, authorization, from_now=False):
+def extend(root, task_id, *, max_ccu, authorization, additional_seconds=None, from_now=False, ccu_only=False):
     """Only extend after every owned lease has ended; active old guards remain intact."""
     path = task_path(project(root), task_id)
     with path.with_name('runner.lock').open('a') as runner, task_lock(path):
         fcntl.flock(runner, fcntl.LOCK_EX | fcntl.LOCK_NB)
         contract = read_json(path)
         _limits(max_ccu, contract['max_seconds'], contract['max_instances'])
-        if not authorization or type(additional_seconds) is not int or not 0 <= additional_seconds <= 28800:
+        if (not authorization or (ccu_only and (additional_seconds is not None or from_now))
+                or (not ccu_only and (type(additional_seconds) is not int or not 0 <= additional_seconds <= 28800))):
             raise FactoryError('explicit_budget_amendment_required')
+        if ccu_only and execution_release(path, contract)[0] != RELEASE:
+            raise FactoryError('upgrade_execution_before_ccu_only_amendment')
         for filename in membership(path):
             batch = read_json(filename)
             state = Path(batch['resource_state'])
             if state.exists() and read_json(state)['state'] not in ('released', 'transferred'):
                 raise FactoryError('active_lease_extension_unsupported_release_first')
         accounting_path = path.with_name('accounting.json')
-        if not accounting_path.exists():
+        if not accounting_path.exists() and not ccu_only:
             raise FactoryError('unstarted_task_create_correct_contract')
-        accounting = read_json(accounting_path)
+        accounting = read_json(accounting_path) if accounting_path.exists() else {
+            'task_sha256': file_sha(path), 'started_at': time.time(), 'deadline': None}
         prior = accounting.get('authorized_max_ccu', contract['max_ccu'])
         if max_ccu < prior:
             raise FactoryError('amendment_cannot_remove_spent_budget')
         now = time.time()
         old_deadline = accounting['deadline']
+        if not ccu_only and old_deadline is None:
+            raise FactoryError('ccu_only_task_extension_requires_ccu_only')
         if from_now and (now <= old_deadline or additional_seconds == 0):
             raise FactoryError('new_window_requires_expired_deadline_and_positive_duration')
         start = now if from_now else old_deadline
         event = {'authorization_basis': authorization, 'previous_max_ccu': prior, 'max_ccu': max_ccu,
-                 'old_deadline': old_deadline, 'deadline': start + additional_seconds,
+                 'old_deadline': old_deadline, 'deadline': None if ccu_only else start + additional_seconds,
                  'at': now, 'all_leases_released': True}
         if from_now:
             event['window_started_at'] = start

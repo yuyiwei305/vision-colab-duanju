@@ -16,10 +16,13 @@ import h3_native_voice as native_voice
 
 
 def prepare(project, episode, batch_id, *, max_seconds=7200, max_ccu=30, runtime_from=None, only=None,
-            pipeline='pika', authorization_basis=None, ordered_entries=None, episode_spec=None):
+            pipeline='pika', authorization_basis=None, ordered_entries=None, episode_spec=None, ccu_only=False):
     if pipeline not in ('pika', 'v4'):
         raise h.H3Error('invalid_h3_pipeline')
     is_v4 = pipeline == 'v4'
+    ccu_only = ccu_only or max_seconds is None
+    if ccu_only:
+        max_seconds = None
     if is_v4 and not authorization_basis:
         raise h.H3Error('current_task_authorization_basis_required')
     root = Path(project).resolve(strict=True)
@@ -159,18 +162,20 @@ def prepare(project, episode, batch_id, *, max_seconds=7200, max_ccu=30, runtime
             raise h.H3Error('runtime_must_belong_to_current_project')
         parent = h.read_json(parent_path)
         batch.update(runtime_from=str(parent_path), session=parent['session'],
-                     max_seconds=min(max_seconds,parent['max_seconds']),max_ccu=min(max_ccu,parent['max_ccu']))
+                     max_seconds=None if ccu_only else min(max_seconds, parent['max_seconds']),
+                     max_ccu=min(max_ccu,parent['max_ccu']))
     h.validate_batch(batch)
     adapter = {'adapters':{'h3-colab':{
         'command':[sys.executable,str(h.SELF),'adapter','--batch',str(destination)],
-        'timeout_seconds':3300,'reference_roles':['reference_image','reference_audio']}}}
+        'timeout_seconds':None if ccu_only else 3300,'reference_roles':['reference_image','reference_audio']}}}
     if config.exists() and h.read_json(config) != adapter:
         raise h.H3Error('adapter_config_conflict')
     if not config.exists(): h.write_json(config, adapter, exclusive=True)
     h.write_json(destination,batch,exclusive=True)
     h.write_json(directory/'previews.json',previews,exclusive=True)
     paragraphs = [f'# {episode} H3 原生尺寸整集批量预览',
-        f'本批 {len(jobs)} 段；各段一次推理，单台 G4，保守资源上限 {max_seconds/60:g} 分钟 / {max_ccu:g} CCU。费用按实际观测，余额不是预算。',
+        (f'本批 {len(jobs)} 段，各段一次推理，单台 G4，预算 {max_ccu:g} CCU。'
+         + (f' 运行窗口 {max_seconds / 60:g} 分钟。' if max_seconds is not None else '')),
         'Pika Ref2VA 六步，4–15 秒按内容变化；帧数自动上取到 17k+5，实际时长以输出为准，不为凑整数裁尾。',
         '横屏1344×768 / 竖屏768×1344，不裁边、不缩放。独立段只编码保存一份native；真实续接段去除前部5帧重复上下文，并在context-masters目录保留完整母版。AV latent留在运行账本。',
         ('仅使用源文档实际绑定的音色参考；H3原生生成对白及口型。' if any(b['role']=='reference_audio' for p in previews for b in p['reference_bindings']) else '本批无参考音频；用户已暂缓Breeze接入，使用H3原生声音。') + '不保证逐字准确或跨镜音色完全一致。无后期配音、字幕、响度重写或公开发布。',

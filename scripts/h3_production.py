@@ -255,7 +255,7 @@ def main():
             sub.add_argument('--batch-id', required=True)
             sub.add_argument('--authorization', required=True)
             sub.add_argument('--max-ccu', type=float, required=True)
-            sub.add_argument('--max-seconds', type=int, required=True)
+            sub.add_argument('--max-seconds', type=int, help=argparse.SUPPRESS)
             sub.add_argument('--runtime-from')
     for name in ('preflight', 'register', 'run', 'resume', 'release'):
         sub = commands.add_parser(name)
@@ -303,7 +303,7 @@ def main():
                 rows = guard(project, args.episode, args.entry)
                 advise(rows)
                 from h3_episode import prepare
-                result = prepare(project, args.episode, args.batch_id, max_seconds=args.max_seconds,
+                result = prepare(project, args.episode, args.batch_id, max_seconds=None,
                                  max_ccu=args.max_ccu, runtime_from=args.runtime_from, only=args.entry,
                                  pipeline=args.pipeline, authorization_basis=args.authorization)
                 print(json.dumps(result, ensure_ascii=False))

@@ -2,6 +2,7 @@
 """Bounded RelayVSR finishing experiment via the existing Colab transport and ledger."""
 import argparse
 import json
+import math
 from pathlib import Path
 import subprocess
 import sys
@@ -98,10 +99,12 @@ def save_artifact(c, remote, local, expected):
 def allocate(transport, batch, *, previous_endpoint=None):
     resource = Path(batch['state_file'])
     state = h.read_json(resource)
-    reserve = 480
-    if batch.get('finishing_backend') == 'recavsr-comfy-colab':
-        reserve = max(90, min(480, (state['deadline'] - state['started_at']) * 0.15))
-    deadline = state.get('compute_deadline', state['deadline'] - reserve)
+    deadline = math.inf
+    if not state.get('ccu_only'):
+        reserve = 480
+        if batch.get('finishing_backend') == 'recavsr-comfy-colab':
+            reserve = max(90, min(480, (state['deadline'] - state['started_at']) * 0.15))
+        deadline = state.get('compute_deadline', state['deadline'] - reserve)
     return h.colab_allocation.allocate(
         transport, resource, batch.get('gpu', 'G4'), deadline,
         max_wait=h._cli_timeout('COLAB_ALLOC_TIMEOUT', h.colab_allocation.MAX_WAIT),

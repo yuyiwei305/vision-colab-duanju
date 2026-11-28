@@ -2,6 +2,8 @@
 """Bounded Breeze TTS 2 voice bootstrap using the official drama ledger and Colab login."""
 import argparse
 import json
+import math
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -10,6 +12,8 @@ import time
 import uuid
 import wave
 import colab_h3 as h
+from drama_factory.colab_allocation import claim_paid_lease, free_wait_orphaned, paid_deadline
+from drama_factory.progress import resource_snapshot, watch
 
 SELF = Path(__file__).resolve()
 REMOTE = SELF.with_name('breeze_tts_colab_remote.py')
@@ -52,9 +56,13 @@ def release(batch, transport):
 
 
 def guard(batch, transport):
-    while time.time() < h.read_json(batch['resource_state'])['deadline']:
-        if h.read_json(batch['resource_state'])['state'] == 'released':
+    while True:
+        state = h.read_json(batch['resource_state'])
+        if state['state'] == 'released':
             return
+        deadline = paid_deadline(batch['resource_state'], state, batch['max_rate'])
+        if free_wait_orphaned(state) or (deadline is not None and time.time() >= deadline):
+            break
         time.sleep(3)
     release(batch, transport)
 
@@ -112,16 +120,24 @@ def run(batch, transport):
         raise ValueError('voice_bootstrap_requires_idle_account')
     if usage['balance'] < batch['max_ccu']:
         raise ValueError('voice_budget_unavailable')
-    deadline = time.time() + min(batch['max_seconds'], batch['max_ccu']/batch['max_rate']*3600) - 30
-    state = {'state':'allocating','deadline':deadline,'started_at':time.time(),
+    if (not math.isfinite(batch['max_rate']) or batch['max_rate'] <= 0
+            or not math.isfinite(batch['max_ccu']) or batch['max_ccu'] * 3600 / batch['max_rate'] <= 240):
+        raise ValueError('voice_budget_below_setup_and_release_reserve')
+    state = {'state':'allocating','deadline':None,'started_at':time.time(),
+        'ccu_only':True, 'ccu_remaining_at_reservation':batch['max_ccu'], 'controller_pid':os.getpid(),
         'usage_before':usage,'remote_directory':'/content/' + batch['session']}
     h.write_json(batch['resource_state'],state,exclusive=True)
     supervisor = subprocess.Popen([sys.executable,str(SELF),'guard','--batch',batch['batch_file']],
         stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
     try:
         state['endpoint'] = h.colab_allocation.allocate(
-            transport, batch['resource_state'], 'L4', deadline - 120,
+            transport, batch['resource_state'], 'L4', math.inf,
             max_wait=h._cli_timeout('COLAB_ALLOC_TIMEOUT', h.colab_allocation.MAX_WAIT))
+        if h.read_json(batch['resource_state'])['state'] != 'allocating':
+            raise h.H3Error('colab_allocation_stopped')
+        claim_paid_lease(batch['resource_state'], state, batch['max_rate'])
+        deadline = state['deadline']
+        state['progress_phase'] = 'bootstrapping'
         h.write_json(batch['resource_state'],state)
         remote=state['remote_directory']
         # The CLI client intermittently hangs on the first exec after allocation
@@ -158,6 +174,10 @@ def run(batch, transport):
         else:raise ValueError('voice_bootstrap_deadline')
         state['state']='ready';h.write_json(batch['resource_state'],state)
         for key in batch['jobs']:
+            if time.time() + 45 >= deadline:
+                raise ValueError('voice_ccu_reserve_reached')
+            state.update(progress_phase='generating', progress_job=key)
+            h.write_json(batch['resource_state'], state)
             print(json.dumps({'phase':'voice_generating','job_id':key}),flush=True)
             try:
                 result=production.run_job(root,job_id=key,adapter_config=Path(batch['adapter_config']))
@@ -170,6 +190,9 @@ def run(batch, transport):
                 result=production.collect_job(root,job_id=key,adapter_config=Path(batch['adapter_config']))
                 print(json.dumps({'phase':'voice_recovered_by_collect','job_id':key}),flush=True)
             print(json.dumps({'phase':'voice_collected','job_id':result['job_id']}),flush=True)
+            state.setdefault('completed_jobs', []).append(key)
+            state.pop('progress_job', None)
+            h.write_json(batch['resource_state'], state)
         environment=remote_status(transport,remote,'environment.json')
         h.write_json(Path(batch['resource_state']).parent/'environment.json',environment)
     finally:
@@ -198,7 +221,11 @@ if __name__=='__main__':
     try:
         batch=h.read_json(args.batch);transport=h.Colab(batch['session'])
         if args.command=='adapter':result=adapter(json.load(sys.stdin),batch,transport)
-        elif args.command=='run':result=run(batch,transport)
+        elif args.command=='run':
+            resource = Path(batch['resource_state'])
+            with watch(f"{Path(batch['project']).name} · {batch['session']}", resource.parent,
+                       lambda: [resource_snapshot(resource, len(batch['jobs']))]):
+                result=run(batch,transport)
         elif args.command=='guard':guard(batch,transport);result={}
         else:result=release(batch,transport)
         print(json.dumps(result,ensure_ascii=True))

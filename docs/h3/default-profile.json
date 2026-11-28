@@ -15,13 +15,12 @@
     "required_task_fields": [
       "authorization",
       "scope",
-      "finite_ccu_budget",
-      "finite_deadline"
+      "finite_ccu_budget"
     ],
-    "note": "新任务按工厂手册 episode plan → task create/prepare/run，显式登记本次授权、有限总预算和期限；工厂固定 V4 并调用 H3 三阶段专项门禁。low_level_prepare 保留专项底层和历史兼容。旧批次沿原账本及执行包恢复。",
+    "note": "新任务按工厂手册 episode plan → task create/prepare/run，登记本次授权范围和累计 CCU 上限。确认未分配实例的等待不占用付费预算。工厂固定 V4 并检查 H3 三阶段记录。旧批次沿原账本及执行包恢复。",
     "low_level_prepare": "python3 scripts/h3_production.py prepare --pipeline v4",
     "plan": "bash scripts/drama episode plan <作品> --episode EP001 --goal clips",
-    "create": "bash scripts/drama task create <作品> --id <任务ID> --plan <plan.json> --authorization <依据> --max-ccu <额度> --max-seconds <秒数>"
+    "create": "bash scripts/drama task create <作品> --id <任务ID> --plan <plan.json> --authorization <依据> --max-ccu <额度>"
   },
   "runtime_manifest": "docs/h3/workflow-v4-g4-runtime.json",
   "runtime_sha256": "1bdead51260d3791850926432ca0a47de2670488793a7733f45c2b7c65dd7fec",
@@ -139,10 +138,9 @@
   "content_acceptance": "not_asserted",
   "future_production_authority": "per_user_task_not_blanket_generation",
   "scheduler": {
-    "revision": "task-budget-concurrency-v1",
     "max_instances": 2,
     "batch_limit_ccu": 50,
-    "batch_limit_seconds": 28800,
+    "batch_limit_seconds": null,
     "shared_task_contract_required_for_parallel": true
   },
   "output_contract": {
@@ -158,7 +156,7 @@
     "details": "docs/h3/native-output-and-retention.md"
   },
   "execution_release": {
-    "release": "factory-v23",
-    "manifest": "docs/factory/releases/factory-v23.json"
+    "release": "factory-v24",
+    "manifest": "docs/factory/releases/factory-v24.json"
   }
 }

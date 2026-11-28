@@ -4,6 +4,7 @@ from __future__ import annotations
 from fractions import Fraction
 import json
 import math
+import os
 from pathlib import Path
 import re
 import shutil
@@ -100,7 +101,7 @@ def verify_original_audio(source, final):
 
 
 def prepare(root, episode, task_id, *, source, target_fps=60, cuts, authorization,
-            max_ccu, max_seconds, cuts_evidence, short_edge=2160, rife_zip=None, master=None):
+            max_ccu, cuts_evidence, max_seconds=None, short_edge=2160, rife_zip=None, master=None):
     import relay_vsr_comfy_colab as relay
     from .releases import release_path, verify_release
     verify_release(RELEASE)
@@ -109,7 +110,7 @@ def prepare(root, episode, task_id, *, source, target_fps=60, cuts, authorizatio
     if not re.fullmatch(r'[a-z0-9-]{1,35}', task_id) or not authorization or not cuts_evidence:
         raise FactoryError('finishing_identity_authorization_and_cut_evidence_required')
     if (type(max_ccu) not in (int, float) or not math.isfinite(max_ccu) or not 0 < max_ccu <= 50
-            or type(max_seconds) is not int or not 0 < max_seconds <= 28800):
+            or (max_seconds is not None and (type(max_seconds) is not int or not 0 < max_seconds <= 28800))):
         raise FactoryError('finite_finishing_budget_required')
     path = project_path(root, source, exists=True)
     info = probe(path)
@@ -212,7 +213,7 @@ def prepare(root, episode, task_id, *, source, target_fps=60, cuts, authorizatio
     preview = relay.engine().prepare_job(root, directory / 'job.json')
     adapter = {'adapters': {ADAPTER: {
         'command': [sys.executable, str(ROOT / 'scripts/relay_vsr_comfy_colab.py'), 'adapter', '--batch', str(batch_path)],
-        'timeout_seconds': max_seconds + 120, 'reference_roles': ['reference_video']}}}
+        'timeout_seconds': None if max_seconds is None else max_seconds + 120, 'reference_roles': ['reference_video']}}}
     if adapter_path.exists() and read_json(adapter_path) != adapter:
         raise FactoryError('finishing_adapter_scope_conflict')
     if not adapter_path.exists():
@@ -251,8 +252,8 @@ def recover_local_outputs(job, batch):
             'provider_job_id': job['collect_provider_job_id']}
 
 
-def resume_allocation(batch, state, transport, spec, existing_master=None):
-    """A released instance may be replaced under the original finite budget only."""
+def resume_allocation(batch, state, transport, spec, existing_master=None, *, start_guard=None):
+    """Replace a released instance using the remaining original budget."""
     import relay_vsr_colab as relay
     import colab_h3 as h
     if state['state'] != 'released':
@@ -261,9 +262,12 @@ def resume_allocation(batch, state, transport, spec, existing_master=None):
     if state.get('endpoint') in live:
         raise FactoryError('release_not_confirmed')
     usage = transport.control('usage')
+    paid_start = state.get('paid_started_at', state['started_at'])
+    last_lease_cost = batch['max_rate'] * max(0, state.get('released_at', time.time()) - paid_start) / 3600
     spent = max(state['usage_before']['balance'] - usage['balance'],
-                batch['max_rate'] * max(0, state.get('released_at', time.time()) - state['started_at']) / 3600)
-    if time.time() + 900 >= state['deadline'] or spent + batch['max_rate'] * 900 / 3600 >= batch['max_ccu']:
+                state.get('previous_lease_ccu', 0) + last_lease_cost)
+    if ((not state.get('ccu_only') and time.time() + 900 >= state['deadline'])
+            or spent + batch['max_rate'] * 900 / 3600 >= batch['max_ccu']):
         raise FactoryError('original_finishing_budget_or_deadline_exhausted')
     master = existing_master if existing_master is not None else Path(batch['durable_root']) / spec['master_filename']
     if not master.is_file():
@@ -276,9 +280,19 @@ def resume_allocation(batch, state, transport, spec, existing_master=None):
     state.setdefault('previous_allocations', []).append({'endpoint': state.get('endpoint'), 'finished_at': state.get('finished_at')})
     previous_endpoint = state.pop('endpoint', None)
     state.update(state='allocating', resume_master_sha256=file_sha(master), worker_started=False)
+    if state.get('ccu_only'):
+        state.pop('paid_started_at', None)
+        state.update(deadline=None, started_at=time.time(), previous_lease_ccu=spent,
+                     ccu_remaining_at_reservation=batch['max_ccu'] - spent, controller_pid=os.getpid())
     h.write_json(batch['state_file'], state)
+    if start_guard:
+        start_guard(batch)
     endpoint = relay.allocate(transport, batch, previous_endpoint=previous_endpoint)
+    if h.read_json(batch['state_file'])['state'] != 'allocating':
+        raise FactoryError('colab_allocation_stopped')
     state.update(state='uploading', endpoint=endpoint)
+    if state.get('ccu_only'):
+        h.colab_allocation.claim_paid_lease(batch['state_file'], state, batch['max_rate'])
     state.pop('finished_at', None)
     h.write_json(batch['state_file'], state)
     return state
