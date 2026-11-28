@@ -35,7 +35,7 @@
     "skills/short-drama/assets/reference-observation.example.jsonl": "9089dbef5cca32986d5c518155df1d666b5eb31cc1c89d133b55a20b1382f153",
     "skills/short-drama/references/audience-reveal.md": "995d023209b382a3c0542e9296b59f991d184f36e23a9c45bd82b2afb3a49868",
     "skills/short-drama/references/contract-and-ownership.md": "059cd553b4ba8150f2c0ee06159fe0006bdb87d56f7e10d9c68e64b8c7754c21",
-    "skills/short-drama/references/creator-documents.md": "53a60cef479496a78f6b98749e9d92a3da7ab7ad466c137b10b3c73e2d0412aa",
+    "skills/short-drama/references/creator-documents.md": "f50a6830cca5adaf306cc2ebdcfaf1d7a11dcc30f1f5681ecce0e130c02eb4db",
     "skills/short-drama/references/creator-workflow.md": "2a42cf71f8f1cc5e25f0dd34b007c5ea8c708a56ac502c28198c9440cb292a3d",
     "skills/short-drama/references/form-cards/Q版表达.md": "814ee0859352425937e0d8c14f2f15f5ef40ee82c9f8545e8fa2f2f0473a9b7c",
     "skills/short-drama/references/form-cards/二维动态漫.md": "4f9584e6086da65cf8877f8a5aa3dba2dd7773875afecde7a4a1758bba714452",
@@ -43,7 +43,7 @@
     "skills/short-drama/references/form-cards/实拍.md": "3097bf50524e02351d7044cb9177aef35b7efac2d329c68625face711f8791b8",
     "skills/short-drama/references/form-cards/水墨笔触.md": "76dae87fe6960c61bcac8b61cf5757b41d277ed8a6e607cf6b26022d3820b701",
     "skills/short-drama/references/form-cards/风格化三维.md": "4c520611fea1c9fed569beb7e8b2b4b5f7635d0a5ea8b27bf388b2ee684d51d0",
-    "skills/short-drama/references/knowhow-index.md": "5fbd3b600fb0a41f5852cd388a28fa8f88c07fc278dc8fa17c7d622d6d06d8cc",
+    "skills/short-drama/references/knowhow-index.md": "338139b93d44540a5cd30d02c784d2c79e6235b329906eb566ee8500dbee98f8",
     "skills/short-drama/references/look-development.md": "c8cb53ce1209d537ceda62702c01e48881c32e9d9085775cb73e9cef48f05859",
     "skills/short-drama/references/pickup-and-alternate.md": "ca8c32bd23bebd9bbad15926b5a8ff8be2e6e4243a6fcdff1ae5816b7a2140cc",
     "skills/short-drama/references/production-form-profiles.md": "737e2be03c22dbb30bf7d8c71f096a4ce3e4d2994ef36a9bce487ccc1ce501b1",
@@ -52,7 +52,7 @@
     "skills/short-drama/scripts/creator_markdown_check.py": "d6ca7e5661071ed96d013b9f5e263c58608e7a350e047718ce61a6d653ccb6b0",
     "skills/short-drama/scripts/creator_views.py": "debafa2021b63721dc40d75bb960fb66f46292e0a19fdaa80a0250d805b443dc",
     "skills/short-drama/scripts/dashboard_server.py": "c931cd2b6cdb154c427956479b8b632a6f69f36dc0b02ef38f7f52dd177a414b",
-    "skills/short-drama/scripts/project_tool.py": "121e51788d7b2e7a7c4efa3b0dde73162b503e1cd9e13bfbc3b71f1c9dc9f699",
+    "skills/short-drama/scripts/project_tool.py": "88efa54130b2f59458362dccf7d3f6622e93bebdafdc7ef880db7bc286736a6b",
     "skills/short-drama/scripts/selftest.py": "93ea401dbfc042a0c4f1accdd26c1e8ddc3fea29b10733b8236cd6b14b10b480",
     "skills/short-drama-assets/SKILL.md": "7f3f23503f70fb1255f7ee0837e4e49d970eb19f5955067b39a5e2340db3ca54",
     "skills/short-drama-assets/agents/openai.yaml": "ed6ab12d47a84ade6f5952644257d43aaa13197acadb15ca9db7638d4cf5481b",
@@ -133,11 +133,11 @@
     "skills/short-drama-edit/assets/remotion/src/screen/tokens.ts": "07f1bcf99c2fb24a5880e9711efa2c0b57e1647b81d6cd02608950e69582e1bb",
     "skills/short-drama-edit/assets/remotion/tsconfig.json": "5a3743bd22076c234e70eba295ba144ebf24feb7f86b90b4c8edb2696edced25",
     "skills/short-drama-edit/assets/剪辑单.md": "4b19e44322c106621b9bf007bf61f766246f50d16f16694808935f68e2ea646f",
-    "skills/short-drama-edit/references/cut-craft.md": "2450f383ff9aa24b35f0e075d2b1849c8653d65786ac5f6a8b6583a860833197",
+    "skills/short-drama-edit/references/cut-craft.md": "dc939c8edf21497c1ef5748f2567841f81826a13f04d84111ddae15be3b2705d",
     "skills/short-drama-edit/references/delivery-verify.md": "bbb7f7d1664b5dd166d4e714f29d79cd85f50b4c236e9129af03260391d290f4",
     "skills/short-drama-edit/references/generated-footage.md": "e772ade9c72c8dcb89a2ce18317a978c1f4647d9ba05d1129d56422f584807bc",
     "skills/short-drama-edit/references/sound-and-subtitles.md": "5944d42f4d4d9240f0f9d736ca2bebbdfe0deb7c47007477d8a586dbc27a404b",
-    "skills/short-drama-edit/references/stage-contract.md": "061b8713370a4ed598e59d3b7eec178a3c654c3bcb8c28e1a02756e10dbe5fbe",
+    "skills/short-drama-edit/references/stage-contract.md": "5085c64aa946f308c81d2cb5d8bd508b5d084c6af4f9b8faeae9ea65d68db7e6",
     "skills/short-drama-edit/references/still-cuts.md": "67e2f9e5c66adb033924cfa0c4508ed315972219558bbb8c300dca0bfd4adccf",
     "skills/short-drama-edit/scripts/edit_tool.py": "b547fcca0e32ae35b8dbb7916f249f02e47c537c15d2da7f9ea038e6b4c7c517",
     "skills/short-drama-edit/scripts/selftest.py": "a71e563dfc4b55ce1f7a393bee1aa36aa977245424f44837754656c603280e46",
@@ -179,15 +179,15 @@
     "skills/short-drama-review/agents/openai.yaml": "d828625cee0450daff12a87ff6e71c012ffdcd59fcce21f2938625769671c5eb",
     "skills/short-drama-review/references/anti-template-repair.md": "e3512ebfaf2642d8a3a57818fcce67b9a6e67b96de1e0f5be37c10df4a1c05d4",
     "skills/short-drama-review/references/generated-media.md": "9f25c33c63a353a2907615e4266d76bdef6cbe7c2620cb1619a88ff3b97a0050",
-    "skills/short-drama-review/references/production-quality-gates.md": "8da4d8f13bf60a055f3e4e1c83c81b329f7a78501f8deb22a3f956dd5d079aef",
+    "skills/short-drama-review/references/production-quality-gates.md": "bb3988b41d2f7fc21384585c30f09ea4dcb2ba9b15ae2ab6ce2cad6536c31564",
     "skills/short-drama-review/references/project-calibration.md": "8042fba860f935d911596ed882b1ad391e1cfd94b29c8bafea008b17382e239e",
     "skills/short-drama-review/references/review-method.md": "b0c873726186d3d73d344e72abe506df8fb65bcc02166b501721a404a09f582a",
     "skills/short-drama-review/references/rubric-assets-prompts.md": "85dc1d5878f6309a2c8dc514c0a791e49dc66ce66bbbd424e0045d77a0390f9c",
     "skills/short-drama-review/references/rubric-source-analysis.md": "435cbd782638c99170ad215313bfc0180b8922b331e3842254e8a6f0cb274700",
     "skills/short-drama-review/references/rubric-story-script.md": "b24c6e04002fb0d20d437d6930026bdfe0ef9a0f0e102a1554d5823ae1e758db",
-    "skills/short-drama-review/references/rubric-visual-motion.md": "a0a696e42217ccfb0d929a769814cec34cf9533856a3215e3b21ad9f8388f56e",
+    "skills/short-drama-review/references/rubric-visual-motion.md": "2e63e4d6283dcb82cc66cdcd688388e3ca77983eea4033415c07ffa9677e4a59",
     "skills/short-drama-review/references/stage-contract.md": "629907e26dd0100220f35776a9a356913282ce24c913d1ff3e35a275a847cf63",
-    "skills/short-drama-storyboard/SKILL.md": "30c75e614564f22846767820824a1a6f0c94a4a5e11ae9008ddae1e1ba590d5d",
+    "skills/short-drama-storyboard/SKILL.md": "71ca4f9774aa5560d05287ef1523a2bcffc42eda74f628ee7b58a2bff33a7359",
     "skills/short-drama-storyboard/agents/openai.yaml": "d6a0712925307b730942e6948cb0dda5867051eb2e5fb433b1a094385af6762e",
     "skills/short-drama-storyboard/references/blocking-playbooks.md": "f941a7b352e0e5a5d480e805c526b2aefd88a9bbedd813d39ed6e9c1b52fb003",
     "skills/short-drama-storyboard/references/comic-keyframe-lexicon.md": "30cb51028d7ee52ff521293966c4be635159678bb6a376d6e77ade02c5b71872",
@@ -195,14 +195,14 @@
     "skills/short-drama-storyboard/references/fight-craft.md": "eace8d102d1b37a84194e7a441b803f2fb47ce4d156dfad9d14240173d79f1ec",
     "skills/short-drama-storyboard/references/keyframe-craft.md": "14aef43084e0db62bfc1071c37cb02e4e13df09e7537575e9176fd34c94b1493",
     "skills/short-drama-storyboard/references/lighting-craft.md": "4783f32cfddf24e0d7992cdbffd680bd1523854741ceb355a4f8a126f8100e8b",
-    "skills/short-drama-storyboard/references/production-shot-grammar.md": "248b5f244c440283b7815019586ec9b8fbcba6fd1fd24805ac110bd8f939684d",
-    "skills/short-drama-storyboard/references/review-and-fixtures.md": "3fc1ab6685efcc6a5241fe4e7494e95f0117f0cf074ab61671260ff3e9495091",
+    "skills/short-drama-storyboard/references/production-shot-grammar.md": "3c078efebfc755be0ef0962498b2607955a9401e8e8e9f31e7a145a7ffd633ff",
+    "skills/short-drama-storyboard/references/review-and-fixtures.md": "a865cf545b32aece314914319f51d2b2be2312422d9dfbd3925384301e9096fe",
     "skills/short-drama-storyboard/references/scene-visual-plan.md": "590d721ab5497f5ef6f416a55c035234761e0f25c2349bbba8b8eed16de4c4ff",
     "skills/short-drama-storyboard/references/screenplay-to-keyframe-example.md": "ddb69a7f3b25affc420176f5fd1390f10a80f4b1115789d31b9c425b5f21367b",
-    "skills/short-drama-storyboard/references/shot-craft.md": "690fcf29f7dac4e7ae0f28b22c3eb30a526f8eb107e74e9a577277df7afa66c2",
+    "skills/short-drama-storyboard/references/shot-craft.md": "a68214846e24f490e19a24dfe461d1d972d993c1f294a26404e5ef1394382167",
     "skills/short-drama-storyboard/references/shot-revision-identity.md": "4abae06eeeb6241af62fd5105bb4607275b00b49a416b1e0bee44174929d7847",
-    "skills/short-drama-storyboard/references/stage-contract.md": "10a272b9126d465295a50b101e45403ced9fb6f34c2edd11a8aaa9b94ec3af38",
-    "skills/short-drama-video-prompts/SKILL.md": "c3404e80fcd175a248f54ae2c4198c9377f54f14d1c4d809ebeb167ce34f8839",
+    "skills/short-drama-storyboard/references/stage-contract.md": "78da47d9da82a9d55582372496add062970447aa8f71e86c7e48a901eebacbc1",
+    "skills/short-drama-video-prompts/SKILL.md": "213e4b70926a1fc28a491e978cc775cde72c66a083c451d8d1ab36815b4e1c58",
     "skills/short-drama-video-prompts/agents/openai.yaml": "57de201034bf3adb3a9db079e7ce0119b0b86e8ba370e90f59fdb52ae83c08a9",
     "skills/short-drama-video-prompts/references/camera-audio-continuity.md": "3ca4b60cde959a0c061a73a84027c0f033239b880464f4a1e172bc1701534986",
     "skills/short-drama-video-prompts/references/delivery-profile.md": "b12de65253e9cb501aff829432dfaee9b0ec78364ad169e12ca7477da87a41c0",
@@ -244,7 +244,7 @@
       },
       "skills/short-drama/references/creator-documents.md": {
         "upstream_sha256": "37e293d0cdd52acf49980b48ba95ce3a51eeca569b4f7ab52e7eb4c0936edcfe",
-        "sha256": "3cf294882f82768fce3058a04ffcc8ee0da1bb054fb5b5876790318ec1f6bcd7"
+        "sha256": "f50a6830cca5adaf306cc2ebdcfaf1d7a11dcc30f1f5681ecce0e130c02eb4db"
       },
       "skills/short-drama/scripts/creator_markdown_check.py": {
         "upstream_sha256": "2a7722ab9fd15a96fef17a33db76283e339a30a47d4398b64718c6a151927f15",
@@ -256,15 +256,15 @@
       },
       "skills/short-drama-storyboard/SKILL.md": {
         "upstream_sha256": "44c36c92988050910c07beb1cf0a94a844416efb5bbdfeacef868b7bf509e886",
-        "sha256": "b8ee5b00238f1158d1c7691f35768ab6a0b9f95b88d436695a90a752dc42140b"
+        "sha256": "71ca4f9774aa5560d05287ef1523a2bcffc42eda74f628ee7b58a2bff33a7359"
       },
       "skills/short-drama-storyboard/references/shot-craft.md": {
         "upstream_sha256": "51d3aa408cf3fd12d4bc9a27d5cc04b34fb7b6574f63fdd7ab2c6cd05503dde5",
-        "sha256": "8128d6138e840e25d800dc3dacaac043ecea26b2ff12eabecf2f91d578eb3dc7"
+        "sha256": "a68214846e24f490e19a24dfe461d1d972d993c1f294a26404e5ef1394382167"
       },
       "skills/short-drama-video-prompts/SKILL.md": {
         "upstream_sha256": "5839ceb13d66d6606c65459ffd4a211735c7b4bb517b9bb1e187b72d2129f0cd",
-        "sha256": "6a9cd3d24be929423e46d0650e9d1fb8e20fbd1b5c8acbca4294d23138d729d9"
+        "sha256": "213e4b70926a1fc28a491e978cc775cde72c66a083c451d8d1ab36815b4e1c58"
       },
       "skills/short-drama-video-prompts/references/delivery-profile.md": {
         "upstream_sha256": "916cc8f993160fb140ed77c618d5d7dc8719e104c6be1ebfe5329870a02aa379",
@@ -324,6 +324,26 @@
           "skills/short-drama-write/references/script-craft.md",
           "skills/short-drama-review/references/rubric-story-script.md",
           "skills/short-drama-storyboard/references/shot-craft.md"
+        ]
+      },
+      {
+        "date": "2026-11-27",
+        "scope": "依据剧情中可见的变化排镜，按画面与带声两遍复核接缝和剪用窗口。增加分镜顺读入口。",
+        "authorization": "用户要求面向整个系统优化流程，以画面做分镜，让观众看懂剧情。",
+        "files": [
+          "skills/short-drama-edit/references/cut-craft.md",
+          "skills/short-drama-edit/references/stage-contract.md",
+          "skills/short-drama-review/references/production-quality-gates.md",
+          "skills/short-drama-review/references/rubric-visual-motion.md",
+          "skills/short-drama-storyboard/SKILL.md",
+          "skills/short-drama-storyboard/references/production-shot-grammar.md",
+          "skills/short-drama-storyboard/references/review-and-fixtures.md",
+          "skills/short-drama-storyboard/references/shot-craft.md",
+          "skills/short-drama-storyboard/references/stage-contract.md",
+          "skills/short-drama-video-prompts/SKILL.md",
+          "skills/short-drama/references/creator-documents.md",
+          "skills/short-drama/references/knowhow-index.md",
+          "skills/short-drama/scripts/project_tool.py"
         ]
       }
     ]

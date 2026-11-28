@@ -1,3 +1,3 @@
 """Shared episode orchestration. Creative text remains in official Markdown."""
 
-RELEASE = 'factory-v22'
+RELEASE = 'factory-v23'

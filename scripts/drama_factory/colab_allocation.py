@@ -36,6 +36,21 @@ def record(journal, request, operation, reply, started):
     write_json(journal, request)
 
 
+def _lookup(transport, resource, journal, request):
+    started = time.time()
+    reply = transport.allocation_request(
+        'lookup', request['gpu'], request['request_id'], started + HTTP_TIMEOUT, resource)
+    record(journal, request, 'lookup', reply, started)
+    if reply['state'] not in ('assigned', 'unassigned'):
+        raise FactoryError('colab_allocation_lookup_unverified')
+    return reply
+
+
+def _history(request):
+    return [*request.get('previous_requests', []),
+            {key: value for key, value in request.items() if key != 'previous_requests'}]
+
+
 def recover(transport, resource):
     """Find the exact requested runtime, even if the assigning subprocess was lost."""
     with journal_lock(resource) as journal:
@@ -47,35 +62,52 @@ def recover(transport, resource):
             raise FactoryError('colab_allocation_request_session_changed')
         if request.get('endpoint'):
             return request['endpoint']
-        started = time.time()
-        reply = transport.allocation_request(
-            'lookup', request['gpu'], request['request_id'], started + HTTP_TIMEOUT, resource)
-        record(journal, request, 'lookup', reply, started)
-        if reply['state'] not in ('assigned', 'unassigned'):
-            raise FactoryError('colab_allocation_lookup_unverified')
+        if request.get('request_id'):
+            _lookup(transport, resource, journal, request)
         return request.get('endpoint')
+
+
+def carry_expired_request(transport, resource, target_resource, *, target_session, gpu):
+    """Preserve a verified unassigned request when replanning under a newer release."""
+    with journal_lock(resource) as source, journal_lock(target_resource) as target:
+        request = read_json(source)
+        state = read_json(resource)
+        if (state.get('state') != 'released' or state.get('failure') != 'colab_allocation_deadline'
+                or state.get('endpoint') or request.get('endpoint') or 'rejected_status' in request
+                or time.time() < request['deadline']
+                or (request['session'], request['gpu']) != (transport.session, gpu)):
+            raise FactoryError('released_unassigned_window_required')
+        if target.exists():
+            saved = read_json(target)
+            history = saved.get('previous_requests', [])
+            if (saved.get('session') == target_session and saved.get('gpu') == gpu
+                    and not saved.get('request_id') and history and history[-1]['request_id'] == request['request_id']):
+                return
+            raise FactoryError('allocation_history_conflict')
+        if _lookup(transport, resource, source, request)['state'] != 'unassigned':
+            raise FactoryError('colab_previous_allocation_still_active')
+        write_json(target, {'session': target_session, 'gpu': gpu, 'previous_requests': _history(request)},
+                   exclusive=True)
 
 
 def allocate(transport, resource, gpu, use_by, *, max_wait=MAX_WAIT, previous_endpoint=None,
              check_budget=None):
+    def start_window(journal, history):
+        request = {'request_id': str(uuid.uuid4()), 'session': transport.session,
+                   'gpu': gpu, 'deadline': min(use_by, time.time() + min(MAX_WAIT, max_wait)),
+                   'attempts': 0, 'previous_requests': history}
+        write_json(journal, request)
+
     with journal_lock(resource) as journal:
-        request = read_json(journal) if journal.is_file() else None
+        request = read_json(journal) if journal.is_file() else {}
         if request and (request['session'], request['gpu']) != (transport.session, gpu):
             raise FactoryError('colab_allocation_request_scope_changed')
         if request and previous_endpoint and request.get('endpoint') == previous_endpoint:
             if previous_endpoint in {item['endpoint'] for item in transport.control('assignments')}:
                 raise FactoryError('colab_previous_allocation_still_active')
-            history = [*request.get('previous_requests', []),
-                       {key: request[key] for key in ('request_id', 'endpoint', 'deadline', 'events')}]
-            request = None
-        else:
-            history = []
-        if request is None:
-            now = time.time()
-            request = {'request_id': str(uuid.uuid4()), 'session': transport.session,
-                       'gpu': gpu, 'deadline': min(use_by, now + min(MAX_WAIT, max_wait)),
-                       'attempts': 0, 'previous_requests': history}
-            write_json(journal, request)
+            start_window(journal, _history(request))
+        elif not request.get('request_id'):
+            start_window(journal, request.get('previous_requests', []))
 
     while True:
         with journal_lock(resource) as journal:
@@ -88,7 +120,20 @@ def allocate(transport, resource, gpu, use_by, *, max_wait=MAX_WAIT, previous_en
                 raise FactoryError(f"colab_allocation_rejected_http_{request['rejected_status']}")
             deadline = min(use_by, request['deadline'])
             if time.time() >= deadline:
-                break
+                had_endpoint = bool(request.get('endpoint'))
+                reply = _lookup(transport, resource, journal, request)
+                if read_json(resource)['state'] != 'allocating':
+                    raise FactoryError('colab_allocation_stopped')
+                if time.time() >= use_by:
+                    raise FactoryError('colab_allocation_deadline')
+                if check_budget:
+                    check_budget()
+                if reply['state'] == 'assigned':
+                    return reply['endpoint']
+                if had_endpoint:
+                    raise FactoryError('colab_original_allocation_unavailable')
+                start_window(journal, _history(request))
+                continue
             if check_budget:
                 check_budget()
             operation = 'lookup' if request.get('endpoint') else 'attempt'
@@ -107,12 +152,6 @@ def allocate(transport, resource, gpu, use_by, *, max_wait=MAX_WAIT, previous_en
                 continue
         delay = min(20, 5 * 2 ** min(max(0, request['attempts'] - 1), 2))
         time.sleep(min(delay, max(0, deadline - time.time())))
-
-    endpoint = recover(transport, resource)
-    if endpoint and time.time() < use_by and read_json(resource)['state'] == 'allocating':
-        return endpoint
-    raise FactoryError('colab_allocation_deadline')
-
 
 def request_once(client_state, operation, session, gpu, request_id, deadline, resource):
     """Use the installed Colab CLI's authenticated assignment and session models."""

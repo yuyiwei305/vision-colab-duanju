@@ -46,7 +46,9 @@ def parser():
         if name in ('create', 'prepare'): p.add_argument('--plan', type=Path, required=True)
         if name == 'prepare':
             p.add_argument('--retain-runtime', action='store_true')
-            p.add_argument('--reuse-runtime', action='store_true')
+            reuse = p.add_mutually_exclusive_group()
+            reuse.add_argument('--reuse-runtime', action='store_true')
+            reuse.add_argument('--retry-allocation', action='store_true')
         if name == 'create':
             p.add_argument('--authorization', required=True); p.add_argument('--max-ccu', required=True, type=float)
             p.add_argument('--max-seconds', required=True, type=int)
@@ -163,7 +165,8 @@ def execute(a):
                                                        max_ccu=a.max_ccu, max_seconds=a.max_seconds)
         if command == 'prepare':
             return runtime.append_wave(a.project, a.id, core.read_json(a.plan), reason=a.reason,
-                                       retain_runtime=a.retain_runtime, reuse_runtime=a.reuse_runtime)
+                                       retain_runtime=a.retain_runtime, reuse_runtime=a.reuse_runtime,
+                                       retry_allocation=a.retry_allocation)
         if command in ('run', 'resume'): return runtime.run(a.project, a.id, resume=command == 'resume')
         if command in ('status', 'reconcile'): return runtime.reconcile(a.project, a.id, online=command == 'reconcile')
         if command == 'stop': return runtime.stop(a.project, a.id, reason=a.reason)

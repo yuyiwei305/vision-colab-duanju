@@ -41,6 +41,7 @@ EXECUTION_UPGRADES = (
     ('factory-v20', 'execution-upgrade-factory-v20.json', ('factory-v19',)),
     ('factory-v21', 'execution-upgrade-factory-v21.json', ('factory-v20',)),
     ('factory-v22', 'execution-upgrade-factory-v22.json', ('factory-v21',)),
+    ('factory-v23', 'execution-upgrade-factory-v23.json', ('factory-v22',)),
 )
 
 
@@ -287,7 +288,8 @@ def _retained_without_pending_requests(batch, production):
                                and _never_dispatched(root, job, production)) for job in batch['jobs'])
 
 
-def append_wave(root, task_id, plan, *, reason, retain_runtime=False, reuse_runtime=False):
+def append_wave(root, task_id, plan, *, reason, retain_runtime=False, reuse_runtime=False,
+                retry_allocation=False):
     import colab_h3 as h
     import h3_episode
     import h3_production
@@ -313,6 +315,8 @@ def append_wave(root, task_id, plan, *, reason, retain_runtime=False, reuse_runt
         choice = {'plan_id': plan['plan_id'], 'reason': reason}
         if retain_runtime or reuse_runtime:
             choice.update(retain_runtime=retain_runtime, reuse_runtime=reuse_runtime)
+        if retry_allocation:
+            choice['retry_allocation'] = True
         wave_key = fingerprint(choice)
         for existing in sorted(path.parent.glob('wave-*.json')):
             saved = read_json(existing)
@@ -330,16 +334,31 @@ def append_wave(root, task_id, plan, *, reason, retain_runtime=False, reuse_runt
             parent = candidates[0]['batch_file']
         if any(b['batch_file'] != parent and not _terminal_batch(b, production) for b in old_batches):
             raise FactoryError('existing_wave_requires_reconciliation_before_revision')
+        allocation_source = None
+        if retry_allocation:
+            latest = max((b['wave'] for b in old_batches), default=0)
+            candidates = [b for b in old_batches if b['wave'] == latest]
+            if parent or len(candidates) != 1 or len(plan['schedule']['batches']) != 1:
+                raise FactoryError('single_unsubmitted_batch_required_for_allocation_retry')
+            allocation_source = candidates[0]
+            source_plan = read_json(root / LEDGER / 'plans' / allocation_source['factory_plan'] / 'plan.json')
+            if (any(production._read_run_history(root, job_id) for job_id in allocation_source['jobs'])
+                    or any(plan[key] != source_plan[key] for key in ('motions', 'spec'))):
+                raise FactoryError('allocation_retry_requires_same_unsubmitted_scope')
         waves = sorted(path.parent.glob('wave-*.json'))
         index = len(waves) + 1
         intent = path.parent / f'prepare-{index:04}.json'
+        allocation_from = allocation_source['batch_file'] if allocation_source else None
         if intent.exists():
             saved = read_json(intent)
-            if saved['plan_id'] != plan['plan_id'] or saved.get('runtime_from') != parent:
+            if (saved['plan_id'] != plan['plan_id'] or saved.get('runtime_from') != parent
+                    or saved.get('allocation_from') != allocation_from):
                 raise FactoryError('incomplete_wave_prepare_recover_original_plan')
         else:
-            write_json(intent, {'plan_id': plan['plan_id'], 'reason': reason, 'runtime_from': parent},
-                       exclusive=True)
+            saved = {'plan_id': plan['plan_id'], 'reason': reason, 'runtime_from': parent}
+            if allocation_from:
+                saved['allocation_from'] = allocation_from
+            write_json(intent, saved, exclusive=True)
         created, previous_by_lane = {}, {0: parent} if parent else {}
         schedule = sorted(plan['schedule']['batches'], key=lambda b: (b['lane'], b['sequence']))
         accounting_path = path.with_name('accounting.json')
@@ -360,6 +379,10 @@ def append_wave(root, task_id, plan, *, reason, retain_runtime=False, reuse_runt
             validate_compilation(root, batch, plan)
             if Path(batch['resource_state']).exists():
                 raise FactoryError('wave_prepare_has_running_resources')
+            if allocation_source:
+                from .colab_allocation import carry_expired_request
+                carry_expired_request(h.Colab(allocation_source['session']), allocation_source['resource_state'],
+                                      batch['resource_state'], target_session=batch['session'], gpu=batch['gpu'])
             batch.update(task_budget=str(path), factory_plan=plan['plan_id'], wave=index,
                          lane=part['lane'], sequence=part['sequence'],
                          keep_runtime=retain_runtime or any(p['lane'] == part['lane'] and p['sequence'] > part['sequence']

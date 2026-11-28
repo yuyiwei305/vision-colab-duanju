@@ -16,6 +16,7 @@ import json
 import math
 import os
 import re
+import runpy
 import shutil
 import stat
 import sys
@@ -2481,6 +2482,38 @@ def _parse_omissions(values: Iterable[str]) -> dict[str, str]:
     return result
 
 
+def storyboard_read_through(path: Path, episode: str, *, with_sound: bool) -> dict[str, Any]:
+    """Project only first-view fields from the authored board in document order."""
+    if EPISODE_ID_RE.fullmatch(episode) is None:
+        raise ValueError("episode must use an EP001-style identifier")
+    root = find_project(path)
+    layout = _project_layout_from_root(root)
+    if layout["mode"] == "mixed":
+        raise ProjectConflictError("作品的剧集目录存在冲突，无法确定正式分镜")
+    relative = f"{layout['roots']['episodes']}/{episode}/分镜.md"
+    board = _read_regular(root, relative).decode("utf-8")
+    checker = runpy.run_path(str(Path(__file__).with_name("creator_markdown_check.py")))
+    mapping, issues = checker["sequence_layout"](board, None)
+    sections = checker["_sections"](board, "SHOT")
+    if not sections:
+        raise ValueError(f"{relative} 中没有可顺读的 SHOT 条目")
+
+    shots = []
+    for shot_id, section in sections.items():
+        fields = checker["_fields"](section, owner=shot_id, errors=issues)
+        row = {"shot": shot_id, **mapping.get("shots", {}).get(shot_id, {})}
+        for key in ("起点", "唯一动作", "终点"):
+            row[key] = fields.get(key, "")
+            if not row[key]:
+                issues.append(f"{shot_id}: 缺少{key}")
+        if fields.get("画面文字"):
+            row["画面文字"] = fields["画面文字"]
+        if with_sound:
+            row["声音"] = fields.get("声音", "")
+        shots.append(row)
+    return {"source": relative, "shots": shots, "issues": list(dict.fromkeys(issues))}
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Manage a short-drama filesystem project.")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -2496,6 +2529,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     status = commands.add_parser("status", help="Print a creator-safe project summary.")
     status.add_argument("path", nargs="?", default=".")
+
+    read_through = commands.add_parser("read-through", help="按成片顺序只读分镜的画面字段。")
+    read_through.add_argument("path")
+    read_through.add_argument("--episode", required=True)
+    read_through.add_argument("--with-sound", action="store_true", help="同时显示分镜的声音字段。")
 
     publish = commands.add_parser("publish", help="Atomically publish text/JSON outputs.")
     publish.add_argument("path")
@@ -2604,6 +2642,10 @@ def main(argv: list[str] | None = None) -> int:
             )
         elif args.command == "status":
             result = project_status(Path(args.path))
+        elif args.command == "read-through":
+            result = storyboard_read_through(Path(args.path), args.episode, with_sound=args.with_sound)
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 0
         elif args.command == "publish":
             root = find_project(Path(args.path))
             result = publish_candidate(

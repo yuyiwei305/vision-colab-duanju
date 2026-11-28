@@ -9,10 +9,11 @@
   - Every shot's `运镜` line states a behavior and a reason tied to the shot's purpose (`SHT-04`; fail on missing `运镜`, bare `运镜：固定` with no reason, or an episode locked on nearly every shot including its peak).
   - Axis is recorded as two named anchors, a working side, and per-character screen positions; shot-reverse-shot directions are complementary; bare left/right means screen left/right (subject-relative sides must name the subject).
 - **Cross-shot continuity**: trace Look, injury, dirt/wetness, emotion/knowledge, position/facing/gaze, hands, held prop, prop owner/state, location/time/weather/light, axis, and screen direction across cuts (distinguishing contradiction from declared montage/ellipsis/dream).
+- **First-view reading**: hide shot titles, intentions, summaries and sound. Read only what the planned picture shows, in playback order, through the actual planned cut. Cover cuts within a Motion as well as between Motions and Sequences. Identify the first shot where a viewer must supply an unseen move, a transfer or knowledge the character could not yet possess. For a withheld event, trace the opportunity and the clue the later reveal pays off. Then restore dialogue, offscreen cues and planned titles to check information deliberately assigned to them. Record the two shot IDs and the visible or audible evidence in the existing review.
 
 ## Rhythm profile: shots
 
-Under the `REV-12` conditions in the [story rubric](rubric-story-script.md#rhythm-profile-rev-12), measure two storyboard fields: average shot length per scene (scene duration ÷ shot count) against `target_avg_shot_seconds`, and the episode share of close-range shots (近景、特写、大特写、细节镜头 ÷ total shots) against `close_shot_share_min`. Also flag shot durations derived from screenplay word counts instead of the scene's sound timeline (`SHT-28`).
+Under the `REV-12` conditions in the [story rubric](rubric-story-script.md#rhythm-profile-rev-12), compare average shot length per scene and the episode share of close-range shots with the accepted rhythm profile. For each motivated cut, check that the viewer has time to read the intended action, result or reaction. Restore the full speaking and listening performance to verify timing. A change of speaker, a word count or an average duration alone gives no visual reason to cut (`SHT-28/29`).
 
 ## Frozen keyframe (`SHT-17`, `SHT-22`, `SHT-24`, `SHT-25`)
 
